@@ -1,0 +1,37 @@
+# Licences and credits
+
+## What is under which licence
+
+| What | Where | Licence |
+|------|-------|---------|
+| Source code and documentation | everything not listed below | MIT, see `LICENSE` |
+| The maps and artwork: map pictures, their places and globe grids, the moon, the icon and logo | `atlas_frame/app/maps/`, `atlas_frame/app/places/`, `atlas_frame/app/grids/`, `atlas_frame/app/moon.png`, `atlas_frame/icon.png`, `atlas_frame/logo.png` | Creative Commons Attribution-NonCommercial 4.0, see `LICENSE-CC-BY-NC-4.0.txt` |
+
+To credit a map: "Antique Atlas Series by Martin Wiorek, CC BY-NC 4.0", with a link to this repository,
+and keep the data credits below.
+
+`atlas_frame/app/moon.png` was generated with Microsoft Copilot. It is offered under the same licence
+as the maps, as far as any copyright in an AI-generated image exists.
+
+## Files from others, not covered by the licences above
+
+| File | Owner and terms |
+|------|-----------------|
+| `atlas_frame/app/fonts/IMFe*.ttf` | IM Fell types, (c) 2010 Igino Marini. SIL Open Font License 1.1, see `atlas_frame/app/fonts/OFL.txt` |
+
+## Data credits for the maps
+
+The credits are kept here, not printed on the maps. Anyone who shares a map should pass them on.
+
+| Source | Used for | Terms |
+|--------|----------|-------|
+| Natural Earth, naturalearthdata.com | Coastlines, borders, rivers, lakes, places, Gray Earth relief, land cover, time zones | Public domain |
+| NOAA NCEI ETOPO 2022 (60 arc-second), doi:10.25921/fd45-gt74 | Elevation, sea-floor relief, peaks | Public domain |
+| IHO-IOC GEBCO Gazetteer of Undersea Feature Names, www.gebco.net | Undersea names | Free, with credit |
+| OSCAR surface currents (Earth & Space Research), via NOAA CoastWatch ERDDAP `jplOscar` | Ocean currents | Free to use and redistribute |
+| SCAR Antarctic Digital Database, rock outcrop (medium resolution, v7.11), British Antarctic Survey | The world map's corner discs | CC BY 4.0 |
+| `flag-icons` 7.2.3, (c) Panayiotis Lipiridis | Flags in the flag panels | MIT |
+| NASA Black Marble 2016 (VIIRS night lights), via NASA GIBS | Night maps | Free, with credit. Imagery provided by NASA's Global Imagery Browse Services (GIBS), part of NASA's Earth Science Data and Information System (ESDIS) |
+
+At run time the add-on reads current weather from Open-Meteo (open-meteo.com, CC BY 4.0) when the
+city weather layer is on.

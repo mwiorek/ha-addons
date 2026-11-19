@@ -1,0 +1,76 @@
+name: build
+
+# Builds each add-on's image and pushes it to GHCR when its version in config.yaml is new.
+# Home Assistant pulls the image named in config.yaml (`image:`), so a release is: bump the version,
+# push, and this publishes ghcr.io/mwiorek/<arch>-atlas-frame:<version>.
+on:
+  push:
+    branches: [main]
+    paths: ["atlas_frame/**", ".github/workflows/build.yaml"]
+  pull_request:
+    paths: ["atlas_frame/**"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: frenck/action-addon-linter@v2
+        with:
+          path: ./atlas_frame
+
+  build:
+    needs: lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version
+        id: v
+        run: |
+          version=$(sed -n 's/^version: *"\{0,1\}\([^"]*\)"\{0,1\} *$/\1/p' atlas_frame/config.yaml)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/${{ matrix.arch }}-atlas-frame" >> "$GITHUB_OUTPUT"
+          echo "Atlas Frame $version"
+
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Already published?
+        id: exists
+        if: github.event_name != 'pull_request'
+        run: |
+          if docker manifest inspect "${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}" > /dev/null 2>&1; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "${{ steps.v.outputs.version }} is already published: nothing to build"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+        if: steps.exists.outputs.skip != 'true'
+
+      - uses: docker/build-push-action@v6
+        if: steps.exists.outputs.skip != 'true'
+        with:
+          context: ./atlas_frame
+          platforms: linux/${{ matrix.arch }}
+          push: ${{ github.event_name != 'pull_request' }}
+          build-args: |
+            BUILD_ARCH=${{ matrix.arch }}
+            BUILD_VERSION=${{ steps.v.outputs.version }}
+          tags: |
+            ${{ steps.v.outputs.image }}:${{ steps.v.outputs.version }}
+            ${{ steps.v.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
