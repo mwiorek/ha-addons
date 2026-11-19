@@ -33,6 +33,10 @@ class Hass:
         """Show a value in Home Assistant (a status entity owned by the add-on)."""
         return self._call("POST", f"/states/{entity_id}", {"state": state, "attributes": attributes or {}})
 
+    def fire_event(self, event_type, data=None):
+        """Fire an event on Home Assistant's bus, for automations to pick up."""
+        return self._call("POST", f"/events/{event_type}", data or {})
+
     def config(self):
         """Home Assistant's configuration: latitude, longitude, location_name, time_zone, ..."""
         return self._call("GET", "/config")
