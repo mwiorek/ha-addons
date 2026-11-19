@@ -36,8 +36,11 @@ changes to the next one in your rotation.
 
 ![The weather cartouche up close](images/legend-closeup.jpg)
 
-Ships with **The World**. Regional maps (Europe, Asia, the Americas, Scandinavia, the British Isles
-and more) are side-loaded as map packs, without rebuilding or updating the add-on.
+Ships with **The World**.
+
+<!-- TODO - map-packs: the regional maps (R1 to R16) are not published. Decide how people get a map
+     pack (download, release asset or NAS) and document it here; then restore the Install step about
+     regional maps and the README line about them. -->
 
 ## Install
 1. Click the button above, or in Home Assistant: Settings → Add-ons → Add-on Store → ⋮ →

@@ -1,5 +1,5 @@
 name: Atlas Frame
-version: "0.4.0"
+version: "0.4.1"
 slug: atlas_frame
 description: The atlas maps on The Frame's Art Mode, lit by the live sun and moon, one map at a time.
 url: https://github.com/mwiorek/ha-addons/tree/main/atlas_frame
@@ -14,6 +14,7 @@ map:
 options:
   tv_host: ""
   preview_only: true
+  select_show: false
   weather_entity: weather.forecast_home
   legend_place: ""
   maps_folder: ""
@@ -29,6 +30,7 @@ options:
 schema:
   tv_host: str?
   preview_only: bool
+  select_show: bool?
   weather_entity: str
   legend_place: str?
   maps_folder: str?
