@@ -307,7 +307,8 @@ def main():
         frame = Preview(os.environ.get("ATLAS_PREVIEW", "/share/atlas_frame"))
         target = f"preview pictures in {frame.folder}"
     else:
-        frame = Frame(opt["tv_host"], token_file=os.path.join(DATA, "tv-token.txt"))
+        frame = Frame(opt["tv_host"], token_file=os.path.join(DATA, "tv-token.txt"),
+                      show=opt.get("select_show") or None)
         target = f"TV {opt['tv_host']}"
     svc = Service(hass, frame, opt, Store(os.path.join(DATA, "state.json")), home=home, place=place, tz=tz)
     log(f"Atlas Frame started: {target}, home {home[0]:.2f}, {home[1]:.2f}")

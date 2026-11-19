@@ -16,33 +16,63 @@ not upload. If the TV or a data source does not answer, it waits or leaves that 
    `https://github.com/mwiorek/ha-addons`.
 2. **Install** "Atlas Frame" from the store. Home Assistant downloads a ready-made image, so this
    takes moments; updates appear like any other add-on's.
-3. **Controls:** copy `atlas_frame_package.yaml` (in the repository's `atlas_frame` folder) to
-   `config/packages/atlas_frame.yaml`, make sure `configuration.yaml` has
-   `homeassistant: packages: !include_dir_named packages`, and restart Home Assistant. Without them
-   the add-on runs on defaults: follow the sun, 2 minutes, every installed map.
-4. **Start** the add-on. It begins in **preview** mode: no TV needed, each picture is written to
-   `/share/atlas_frame/latest.jpg` (the `share` folder on the Samba share). Watch it change.
+3. **Check the weather entity.** The add-on's Configuration option `weather_entity` defaults to
+   `weather.forecast_home`, which does not exist on every system. Open Developer Tools, States,
+   search "weather.", and if that name is not there, set `weather_entity` to the one you have. With a
+   wrong name the weather cartouche and city weather are left out.
+4. **Controls:** copy `atlas_frame_package.yaml` (in the repository's `atlas_frame` folder) to
+   `config/packages/atlas_frame.yaml`, and make sure `configuration.yaml` has
+   ```yaml
+   homeassistant:
+     packages: !include_dir_named packages
+   ```
+   The `packages:` line goes **under your existing `homeassistant:` key**. Do not add a second
+   `homeassistant:` block: that breaks the configuration. Restart Home Assistant. Without the
+   package the add-on runs on defaults: follow the sun, 2 minutes, every installed map.
+5. **Switch on the layers you want.** The helpers `atlas_frame_weather` (temperature and wind at
+   the cities) and `atlas_frame_home_readings` (your own sensor at home) start **off**, and those
+   layers only draw once they are on. The weather cartouche (`atlas_frame_legend`) starts on.
+6. **Home sensors (optional):** in the add-on options, `home_sensors` takes your own Home Assistant
+   sensors: `temperature` in **degrees C**, `pressure` in **hPa**, `wind_speed` in **m/s** (not
+   km/h), `wind_from` in **degrees** the wind blows from. Empty fields are fine; a sensor in other
+   units has to be converted first.
+7. **Maps:** **The World** is built in; there is nothing to set up.
+8. **Start** the add-on. It begins in **preview** mode: no TV needed, each picture is written to
+   `/share/atlas_frame/latest.jpg` (the `share` folder on the Samba share). To watch it without
+   opening the share, add a *Local File* camera or a *Picture* card pointing at that file.
+
+### How to tell it is working
+- The add-on's Log shows `Atlas Frame started: preview pictures in /share/atlas_frame, ...`.
+- `sensor.atlas_frame` appears under Developer Tools, States. **Look at its `maps_missing`
+  first**: it names chosen maps that are not installed (an empty maps folder shows up here).
+- `latest.jpg` changes every few minutes, or at once when you press `input_button.atlas_frame_next`.
 
 ## When the Frame is on the wall
+Not tested on a real TV yet (see the end of this page). Start in preview mode first.
 1. Give the Frame a fixed IP address in the router.
 2. Add-on Configuration: `tv_host` = that address, `preview_only` off. Restart the add-on.
 3. Put the TV in Art Mode. The first time, the TV asks to allow "Atlas": allow it. The add-on keeps
    the permission in its own storage.
 4. **Watch the first push**: the map should change while staying in Art Mode. If the TV accepts the
-   upload but the picture does not change, the select call needs `show=True` (the `ATLAS_SHOW`
-   setting in `artmode/frame.py`).
+   upload but the picture does not change, turn on the add-on option `select_show` and restart.
 
 ## Maps
-The add-on comes with **The World** (W1). The regional maps are added beside it, without
+<!-- TODO - map-packs: the regional maps (R1 to R16) are not published. Decide how people get a map
+     pack (download, release asset or NAS) and document it here; then restore the Install step about
+     regional maps and the README line about them. -->
+
+The add-on comes with **The World** (W1). More maps can be added beside it, without
 rebuilding or updating the add-on, from either of two folders:
 
-- **My maps:** the add-on's own folder, `addon_configs/<…>_atlas_frame/maps` on the Samba share
-  (`/config/maps` inside the add-on; it is made on first start). Unzip a map pack there.
+- **My maps:** the add-on's own folder, `addon_configs/e353e52e_atlas_frame/maps` on the Samba share
+  (`/config/maps` inside the add-on; it is made on first start). Put a map's files there. The first
+  part of the name comes from the repository address; look at the `addon_configs` folder on your
+  share if yours differs.
 - **A maps folder on the NAS:** Settings, System, Storage, Add network storage. Usage **Share**,
   a name such as `atlas`, the NAS address and folder. It appears to the add-on as `/share/atlas`;
   set the option `maps_folder: /share/atlas` and restart the add-on once.
 
-Both take the same layout, which map packs and the atlas renderer write:
+Both take the same layout, which the atlas renderer writes:
 
 ```
 R7_4k.jpg  R7N_4k.jpg     the day and night maps, 3840 x 2160
@@ -110,8 +140,9 @@ entities:
     services report it;
   - a compass rose with a fletched arrow flying downwind, longer with more feathers as the wind
     rises, the Beaufort name and point it blows from, and the speed in m/s.
-  Data: the `weather_entity` option, `weather.forecast_home` (Met.no, built into Home Assistant)
-  by default. Units are converted from whatever the entity reports.
+  Data: the `weather_entity` option. The default, `weather.forecast_home` (Met.no), is only there on
+  systems that set it up: check the name under Developer Tools, States and change the option if it
+  is missing. Units are converted from whatever the entity reports.
 - **Weather at cities** (`atlas_frame_weather`): current temperature and wind from Open-Meteo (free,
   no key) for each map's largest labelled cities, refreshed at most every 15 minutes per map. Only
   the cities' public coordinates are sent. Figures keep off the map's lettering; a city with no
@@ -123,10 +154,22 @@ entities:
 - **Adding a data type:** a source in `app/artmode/sources.py` that returns readings, and a layer
   in `app/artmode/layers.py` that draws them, then a switch here.
 
+## Troubleshooting
+- **A map you added does not show:** the maps folder is empty or one of the map's four files is
+  missing. `sensor.atlas_frame` lists `maps_missing`. Add the missing files (see Maps); the map joins
+  at its next turn.
+- **The TV does not change:** the Frame must be on and in **Art Mode**; the add-on never wakes a TV
+  in standby or pushes over other content. If it is in Art Mode and the TV accepted the upload but
+  the picture stays, turn on `select_show`.
+- **No weather on the map:** the `weather_entity` name is wrong. Check Developer Tools, States, and
+  set the option. City weather and home readings also need their helpers switched on.
+- **Nothing happens at all:** check `atlas_frame_on` is on, and read the add-on's Log.
+
 ## Building it yourself
 To change the code and run your own build, copy the `atlas_frame` folder to Home Assistant's
 `/addons` folder and delete the `image:` line from its `config.yaml`. It then shows under Local
-add-ons, and Home Assistant builds it from the Dockerfile.
+add-ons, and Home Assistant builds it from the Dockerfile. **Uninstall the store version first, or
+remove your old local copy before copying a new one**: otherwise both appear in the list.
 
 ## Not yet tested
 - Talking to the Frame (`artmode/frame.py`): written from the `samsungframetv` README, not run
