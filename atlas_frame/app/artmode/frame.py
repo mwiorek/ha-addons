@@ -35,28 +35,3 @@ class Frame:
     def delete(self, content_id):
         self.tv.art().delete(content_id)
 
-
-class Preview:
-    """Stands in for the TV before it is on the wall: every picture is written to a folder (the
-    add-on writes to Home Assistant's /share/atlas_frame, reachable over the Samba share), and Art
-    Mode always reads as on."""
-
-    def __init__(self, folder):
-        self.folder = folder
-        os.makedirs(folder, exist_ok=True)
-
-    def art_mode(self):
-        return True
-
-    def upload(self, jpeg):
-        tmp = os.path.join(self.folder, "latest.jpg.tmp")
-        with open(tmp, "wb") as f:
-            f.write(jpeg)
-        os.replace(tmp, os.path.join(self.folder, "latest.jpg"))
-        return "preview"
-
-    def select(self, content_id):
-        pass
-
-    def delete(self, content_id):
-        pass

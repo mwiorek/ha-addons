@@ -1,12 +1,14 @@
-"""The add-on's loop: while the Frame is in Art Mode, push the next map, lit for the moment, every few
-minutes. Controls are Home Assistant helpers (ha-addon/atlas_frame/atlas_frame_package.yaml); the
-add-on reports back on sensor.atlas_frame.
+"""The add-on's loop: every few minutes, render the next map, lit for the moment, and hand it to the
+outputs: the picture files (option `output_files`, artmode/outputs.py) always, and the Frame while it
+is in Art Mode. Controls are Home Assistant helpers (ha-addon/atlas_frame/atlas_frame_package.yaml);
+the add-on reports back on sensor.atlas_frame and fires `atlas_frame_rendered` after each push.
 
     python -m artmode.service          # in the add-on; reads /data/options.json
 
-Each push: render the next map in the rotation (sun, moon, data layers), upload it, select it, and
-delete the add-on's own earlier uploads. It never wakes a TV in standby, never pushes while the TV
-shows anything but Art Mode, and never deletes pictures it did not upload.
+Each push: render the next map in the rotation (sun, moon, data layers), write it to every output
+file, then (Frame in Art Mode) upload it, select it, and delete the add-on's own earlier uploads. It
+never wakes a TV in standby, never pushes to the TV while it shows anything but Art Mode, and never
+deletes pictures it did not upload.
 """
 import json
 import os
@@ -14,7 +16,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 
-from . import files, layers, legend, places, render, sources
+from . import files, layers, legend, outputs, places, render, sources
 
 DATA = os.environ.get("ATLAS_DATA", "/data")
 TICK = 5                    # seconds between looks at the controls
@@ -36,6 +38,8 @@ H_MAPS, H_NEXT = "input_text.atlas_frame_maps", "input_button.atlas_frame_next"
 H_WEATHER, H_HOME = "input_boolean.atlas_frame_weather", "input_boolean.atlas_frame_home_readings"
 H_LEGEND = "input_boolean.atlas_frame_legend"
 STATUS = "sensor.atlas_frame"
+EVENT = "atlas_frame_rendered"
+DEFAULT_OUTPUT = "/share/atlas_frame/latest.jpg"
 DEFAULTS = {H_ON: "on", H_MODE: "Follow the sun", H_MINUTES: "2", H_MAPS: ",".join(ALL_MAPS),
             H_NEXT: "", H_WEATHER: "off", H_HOME: "off", H_LEGEND: "on"}
 
@@ -86,8 +90,9 @@ class Store:
 
 class Service:
     def __init__(self, hass, frame, options, store, clock=time.time, renderer=render.render,
-                 weather=None, home=None, place=None, tz=None):
-        self.hass, self.frame, self.opt, self.store = hass, frame, options, store
+                 weather=None, home=None, place=None, tz=None, files_out=()):
+        self.hass, self.frame, self.opt, self.store = hass, frame, options, store   # frame: None = no TV
+        self.files_out = list(files_out)    # outputs.FileOutput, written on every push
         self.clock, self.renderer = clock, renderer
         self.weather = weather or sources.OpenMeteo()
         self.home = home                    # (lat, lon), from Home Assistant at start
@@ -138,11 +143,12 @@ class Service:
         if not c.on:
             return self.report("off", c)
         was = self.art
-        art = self.poll_art(now)
-        if art is not True:
+        art = self.poll_art(now) if self.frame else None
+        to_tv = self.frame is not None and art is True
+        if not to_tv and not self.files_out:
             return self.report("TV off" if art is None else "waiting for Art Mode", c)
         why = None
-        if was is not True:
+        if to_tv and was is not True:
             why = "Art Mode came on"
         elif self.seen_next is not None and c.next != self.seen_next:
             why = "next map"
@@ -152,7 +158,7 @@ class Service:
             why = "time"
         self.seen_next, self.seen_key = c.next, c.key()
         if why and now >= self.retry_at:
-            self.push(c, now, why)
+            self.push(c, now, why, to_tv)
         return self.report(NAMES.get(self.status.get("map_id"), "waiting"), c)
 
     def installed(self, c):
@@ -166,7 +172,7 @@ class Service:
                                          "maps folder (DOCS, Maps)") if missing else None)
         return have or ["W1"]
 
-    def push(self, c, now, why):
+    def push(self, c, now, why, to_tv=True):
         s = self.store
         rotation = self.installed(c)
         s.d["index"] = (s.d["index"] + 1) % len(rotation)
@@ -182,16 +188,30 @@ class Service:
                 notes = "; ".join([n for n in [notes] + files.PROBLEMS if n])
             source = {"day": files.SOURCES.get(f"{map_id}_4k.jpg"), "night": files.SOURCES.get(f"{map_id}N_4k.jpg"),
                       "places": files.SOURCES.get(f"{map_id} places"), "grid": files.SOURCES.get(f"{map_id} grid")}
-            cid = self.frame.upload(jpeg)
-            if cid not in s.d["uploaded"]:
-                s.d["uploaded"].append(cid)
-            s.save()                        # record it before anything else can fail
-            self.frame.select(cid)
-            self.cleanup(keep=cid)
+            written, failed = [], []
+            for out in self.files_out:      # one unwritable file never stops the others or the TV
+                try:
+                    out.write(jpeg)
+                    written.append(out)
+                except Exception as e:
+                    failed.append(f"{out.path}: {e.__class__.__name__}: {e}")
+            if failed and not written and not to_tv:
+                raise OSError("; ".join(failed))
+            cid = None
+            if to_tv:
+                cid = self.frame.upload(jpeg)
+                if cid not in s.d["uploaded"]:
+                    s.d["uploaded"].append(cid)
+                s.save()                    # record it before anything else can fail
+                self.frame.select(cid)
+                self.cleanup(keep=cid)
             self.last_push, self.retry_at = now, 0
-            self.status.update(map_id=map_id, pushed_at=t.isoformat(timespec="seconds"), error=None,
-                               notes=notes or None, files_from={k: v for k, v in source.items() if v})
-            log(f"{map_id} {NAMES[map_id]} ({c.mode}, {why}) {len(jpeg) / 1e6:.1f} MB as {cid}")
+            self.status.update(map_id=map_id, pushed_at=t.isoformat(timespec="seconds"),
+                               error="; ".join(failed) or None, notes=notes or None,
+                               files_from={k: v for k, v in source.items() if v})
+            where = [o.path for o in written] + ([f"TV as {cid}"] if cid else [])
+            log(f"{map_id} {NAMES[map_id]} ({c.mode}, {why}) {len(jpeg) / 1e6:.1f} MB to {', '.join(where)}")
+            self.announce(map_id, c, t, written, cid)
         except Exception as e:
             s.d["index"] = (s.d["index"] - 1) % len(rotation)  # the same map again next time
             self.retry_at = now + RETRY
@@ -235,6 +255,17 @@ class Service:
                 notes.append(f"legend left out: {e.__class__.__name__}: {e}")
         return data, lay, "; ".join(notes)
 
+    def announce(self, map_id, c, t, written, cid):
+        """Tell Home Assistant a new picture is out (event `atlas_frame_rendered`), so an automation
+        can show it elsewhere, e.g. media_player.play_media with one of `media_ids`."""
+        try:
+            self.hass.fire_event(EVENT, {
+                "map_id": map_id, "map": NAMES[map_id], "mode": c.mode,
+                "pushed_at": t.isoformat(timespec="seconds"), "files": [o.path for o in written],
+                "media_ids": [m for m in (o.media_id() for o in written) if m], "tv": cid is not None})
+        except Exception as e:
+            log(f"could not fire {EVENT}: {e}")
+
     def cleanup(self, keep):
         """Delete our earlier uploads; one that fails stays listed and is tried again next time."""
         left = []
@@ -252,6 +283,7 @@ class Service:
     def report(self, state, c):
         attrs = {"friendly_name": "Atlas Frame", "icon": "mdi:map", "mode": c.mode,
                  "minutes_per_map": c.minutes, "maps": c.maps, "art_mode": self.art,
+                 "tv": self.frame is not None, "output_files": [o.path for o in self.files_out],
                  **{k: v for k, v in self.status.items() if v is not None}}
         if self.last_push > 0:
             attrs["next_push_at"] = datetime.fromtimestamp(self.last_push + c.minutes * 60, timezone.utc) \
@@ -269,12 +301,15 @@ class Service:
 def main():
     from .frame import Frame
     from .hass import Hass
-    from .frame import Preview
     opt = json.load(open(os.path.join(DATA, "options.json")))
-    preview = bool(opt.get("preview_only"))
-    if not opt.get("tv_host") and not preview:
-        raise SystemExit("set tv_host (the Frame's IP address) in the add-on's configuration, "
-                         "or switch on preview_only")
+    use_tv = bool(opt.get("tv_host")) and not opt.get("preview_only")
+    try:
+        files_out = outputs.parse(opt.get("output_files", [DEFAULT_OUTPUT]))
+    except ValueError as e:
+        raise SystemExit(str(e))
+    if not use_tv and not files_out:
+        raise SystemExit("nowhere to show the maps: set tv_host (the Frame's IP address) with "
+                         "preview_only off, or add a path to output_files")
     files.TEMPLATES_ONLY = opt.get("maps_source") == "templates"
     folder = (opt.get("maps_folder") or "").strip()
     if files.TEMPLATES_ONLY:
@@ -303,14 +338,13 @@ def main():
     except Exception as e:
         home, place, tz = render.HOME, None, None
         log(f"could not read Home Assistant's location ({e}); using {home}")
-    if preview:
-        frame = Preview(os.environ.get("ATLAS_PREVIEW", "/share/atlas_frame"))
-        target = f"preview pictures in {frame.folder}"
-    else:
+    frame = None
+    if use_tv:
         frame = Frame(opt["tv_host"], token_file=os.path.join(DATA, "tv-token.txt"),
                       show=opt.get("select_show") or None)
-        target = f"TV {opt['tv_host']}"
-    svc = Service(hass, frame, opt, Store(os.path.join(DATA, "state.json")), home=home, place=place, tz=tz)
+    target = ", ".join(([f"TV {opt['tv_host']}"] if use_tv else []) + [o.path for o in files_out])
+    svc = Service(hass, frame, opt, Store(os.path.join(DATA, "state.json")), home=home, place=place,
+                  tz=tz, files_out=files_out)
     log(f"Atlas Frame started: {target}, home {home[0]:.2f}, {home[1]:.2f}")
     while True:
         try:

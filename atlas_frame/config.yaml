@@ -1,7 +1,7 @@
 name: Atlas Frame
-version: "0.4.1"
+version: "0.5.0"
 slug: atlas_frame
-description: The atlas maps on The Frame's Art Mode, lit by the live sun and moon, one map at a time.
+description: The atlas maps on The Frame's Art Mode or any screen that shows a picture file, lit by the live sun and moon.
 url: https://github.com/mwiorek/ha-addons/tree/main/atlas_frame
 image: ghcr.io/mwiorek/{arch}-atlas-frame
 arch:
@@ -11,9 +11,12 @@ homeassistant_api: true
 map:
   - share:rw
   - addon_config:rw
+  - media:rw
 options:
   tv_host: ""
   preview_only: true
+  output_files:
+    - /share/atlas_frame/latest.jpg
   select_show: false
   weather_entity: weather.forecast_home
   legend_place: ""
@@ -30,6 +33,8 @@ options:
 schema:
   tv_host: str?
   preview_only: bool
+  output_files:
+    - str
   select_show: bool?
   weather_entity: str
   legend_place: str?

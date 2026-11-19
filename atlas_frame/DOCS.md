@@ -1,13 +1,15 @@
 # Atlas Frame (Home Assistant add-on)
 
-Shows the atlas on The Frame's Art Mode: one map at a time, lit by the sun of that moment, with the
-moon, cut to the next map every few minutes. Controlled from Home Assistant; reports back on
-`sensor.atlas_frame`.
+Shows the atlas on The Frame's Art Mode, or on any screen that can show a picture file: one map at a
+time, lit by the sun of that moment, with the moon, cut to the next map every few minutes.
+Controlled from Home Assistant; reports back on `sensor.atlas_frame`.
 
 ## What it does
 Every few seconds it reads its controls. While the Frame is in Art Mode it pushes the next map when
 one is due, when Art Mode comes on, when you press "next map", or when you change a control. Each
-push: render (about 1 s), upload, select, delete its own previous upload. It never wakes a TV in
+push: render (about 1 s), write the picture to its output files (see Other screens), then upload,
+select and delete its own previous upload on the Frame. The files are updated even while the Frame
+is away. It never wakes a TV in
 standby, never pushes while the TV shows anything but Art Mode, and never touches pictures it did
 not upload. If the TV or a data source does not answer, it waits or leaves that layer out.
 
@@ -39,7 +41,8 @@ not upload. If the TV or a data source does not answer, it waits or leaves that 
 7. **Maps:** **The World** is built in; there is nothing to set up.
 8. **Start** the add-on. It begins in **preview** mode: no TV needed, each picture is written to
    `/share/atlas_frame/latest.jpg` (the `share` folder on the Samba share). To watch it without
-   opening the share, add a *Local File* camera or a *Picture* card pointing at that file.
+   opening the share, add a *Local File* camera or a *Picture* card pointing at that file. That
+   file stays on when the Frame is set up; it is also how other TVs show the maps (Other screens).
 
 ### How to tell it is working
 - The add-on's Log shows `Atlas Frame started: preview pictures in /share/atlas_frame, ...`.
@@ -51,6 +54,7 @@ not upload. If the TV or a data source does not answer, it waits or leaves that 
 Not tested on a real TV yet (see the end of this page). Start in preview mode first.
 1. Give the Frame a fixed IP address in the router.
 2. Add-on Configuration: `tv_host` = that address, `preview_only` off. Restart the add-on.
+   (`preview_only` on means: leave the Frame alone and only write the output files.)
 3. Put the TV in Art Mode. The first time, the TV asks to allow "Atlas": allow it. The add-on keeps
    the permission in its own storage.
 4. **Watch the first push**: the map should change while staying in Art Mode. If the TV accepts the
@@ -92,6 +96,49 @@ shows where the map on the wall came from.
 
 **Back to the built-in maps:** set the option `maps_source: templates` and restart. Side-loaded files
 are left where they are and ignored until you set it back to `auto`.
+
+## Other screens
+Every push also writes the picture (3840 x 2160 JPEG) to each path in the option `output_files`, the
+Frame or not. The file is replaced in one step, so a player never reads half a picture. Default:
+`/share/atlas_frame/latest.jpg`. Add or change paths to suit the screen; remove them all if only the
+Frame should get the maps. A path must be a full path ending in `.jpg`; the folder is made if needed.
+
+Where to put a file:
+| Path starts with | Reached as |
+|---|---|
+| `/share/` | the `share` folder on the Samba share, or a NAS share added under Settings, System, Storage (usage Share) |
+| `/media/` | Home Assistant's media folder: Media in the sidebar, and `media-source://media_source/local/...` for casting |
+| `/config/maps/..` | not for output: that is my maps |
+
+**A TV with a media player that loops a file** (VLC, Kodi, a Philips or Android TV's own player):
+open `latest.jpg` over the Samba share and set it to repeat. It reloads the file as it changes.
+
+**Chromecast, Google TV, DLNA and other cast targets:** add a path in the media folder, e.g.
+`/media/atlas_frame/latest.jpg`, and let an automation cast each new picture. After every push
+the add-on fires the event `atlas_frame_rendered` with `map_id`, `map`, `mode`, `pushed_at`,
+`files`, `media_ids` (the `media-source://` ids of files in the media folder) and `tv` (whether
+the Frame got it):
+```yaml
+automation:
+  - alias: Atlas on the living-room TV
+    triggers:
+      - trigger: event
+        event_type: atlas_frame_rendered
+    conditions:
+      - condition: template
+        value_template: "{{ trigger.event.data.media_ids | count > 0 }}"
+    actions:
+      - action: media_player.play_media
+        target:
+          entity_id: media_player.living_room_tv
+        data:
+          media:
+            media_content_id: "{{ trigger.event.data.media_ids[0] }}"
+            media_content_type: image/jpeg
+```
+Add a condition on the TV's state if it should only get maps while it is idle; the add-on cannot
+tell whether another TV is showing something else. The same event can drive anything else that
+takes a picture: a notification, a wall tablet, an upload.
 
 ## Controls (Home Assistant helpers)
 | Helper | What |
@@ -163,6 +210,8 @@ entities:
   the picture stays, turn on `select_show`.
 - **No weather on the map:** the `weather_entity` name is wrong. Check Developer Tools, States, and
   set the option. City weather and home readings also need their helpers switched on.
+- **The output file does not change:** `sensor.atlas_frame` shows `output_files` and, if one could
+  not be written, the `error`. A file that fails never stops the others or the Frame.
 - **Nothing happens at all:** check `atlas_frame_on` is on, and read the add-on's Log.
 
 ## Building it yourself
