@@ -1,0 +1,19 @@
+# Secrets and local config
+.env
+.env.*
+*.token
+tv-token.txt
+secrets.yaml
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local output and OS/editor noise
+/data/
+*.log
+.DS_Store
+.idea/
+.vscode/
