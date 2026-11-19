@@ -1,0 +1,52 @@
+# Atlas Frame controls for Home Assistant. Save as config/packages/atlas_frame.yaml and make sure
+# configuration.yaml has:
+#   homeassistant:
+#     packages: !include_dir_named packages
+# then restart Home Assistant. The add-on reads these and reports on sensor.atlas_frame.
+input_boolean:
+  atlas_frame_on:
+    name: Atlas Frame
+    icon: mdi:map
+    initial: true
+  atlas_frame_weather:
+    name: Atlas weather at cities
+    icon: mdi:weather-partly-cloudy
+  atlas_frame_home_readings:
+    name: Atlas home readings
+    icon: mdi:home-thermometer
+  atlas_frame_legend:
+    name: Atlas weather legend
+    icon: mdi:compass-rose
+    initial: true
+
+input_select:
+  atlas_frame_mode:
+    name: Atlas light
+    icon: mdi:theme-light-dark
+    options:
+      - Follow the sun
+      - Home light
+      - Hold day
+      - Hold dark
+
+input_number:
+  atlas_frame_minutes:
+    name: Atlas minutes per map
+    icon: mdi:timer-outline
+    min: 1
+    max: 30
+    step: 1
+    initial: 2
+    mode: slider
+
+input_text:
+  atlas_frame_maps:
+    name: Atlas maps in rotation
+    icon: mdi:format-list-numbered
+    max: 255
+    initial: "W1,R1,R2,R3,R4,R5,R6,R7,R8,R9,R10,R11,R12,R13,R14,R15,R16"
+
+input_button:
+  atlas_frame_next:
+    name: Atlas next map
+    icon: mdi:skip-next
