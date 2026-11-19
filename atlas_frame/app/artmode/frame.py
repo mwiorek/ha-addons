@@ -23,7 +23,8 @@ class Frame:
         return str(self.tv.art().get_artmode()).lower() == "on"
 
     def upload(self, jpeg):
-        """Upload a JPEG with no matte (the map fills the screen); returns its content id."""
+        """Upload a JPEG with no matte (the map fills the screen); returns its content id. JPEG, not
+        PNG: the TV keeps its art as JPEG either way, and the upload stays a few MB."""
         cid = self.tv.art().upload(jpeg, file_type="JPEG", matte="none")
         if not cid:
             raise RuntimeError("the TV did not confirm the upload")

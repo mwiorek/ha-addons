@@ -17,6 +17,7 @@ options:
   preview_only: true
   output_files:
     - /share/atlas_frame/latest.jpg
+  jpeg_quality: 95
   select_show: false
   weather_entity: weather.forecast_home
   legend_place: ""
@@ -35,6 +36,7 @@ schema:
   preview_only: bool
   output_files:
     - str
+  jpeg_quality: int(60,100)?
   select_show: bool?
   weather_entity: str
   legend_place: str?

@@ -1,6 +1,10 @@
 # Changelog
 
 ## 0.5.0
+- New built-in map: **The World (population)**, `W1P`. The same sheet with population density in place of the political colours by day, and city lights by night. Ships lossless (PNG). It joins the rotation by default; with the helpers package, add `W1P` to `input_text.atlas_frame_maps`.
+- Lossless base maps: the map pictures can be `.png` (`R7_4k.png`), used before a `.jpg` in the same folder. Drop a PNG beside a map's JPEG to upgrade it. (The political World, W1, is still JPEG in this release.)
+- Sharper output: JPEGs now keep colour at full resolution (4:4:4, was 4:2:0), at the new option `jpeg_quality` (default 95, was 90).
+- An output file ending in `.png` is written lossless; one ending in `.jpg` as JPEG. List both to compare them.
 - New option `output_files`: every push writes the picture to each of these paths, with or without the Frame, and keeps them updated while the Frame is away. For TVs that loop a file (VLC over Samba), Local File cameras and casting. Default `/share/atlas_frame/latest.jpg`, as before.
 - The Frame and the files work side by side: `preview_only` now only means "leave the Frame alone".
 - The add-on can write to Home Assistant's media folder (`/media`), for casting through media sources.

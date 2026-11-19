@@ -36,7 +36,7 @@ changes to the next one in your rotation.
 
 ![The weather cartouche up close](images/legend-closeup.jpg)
 
-Ships with **The World**.
+Ships with **The World** and **The World (population)**.
 
 <!-- TODO - map-packs: the regional maps (R1 to R16) are not published. Decide how people get a map
      pack (download, release asset or NAS) and document it here; then restore the Install step about

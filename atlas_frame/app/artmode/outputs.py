@@ -1,7 +1,8 @@
 """Picture files the add-on keeps up to date beside (or instead of) the Frame: the add-on option
-`output_files`. Each push writes the same JPEG to every path, whatever the Frame is doing, so a
+`output_files`. Each push writes the picture to every path, whatever the Frame is doing, so a
 player that loops a file (VLC over Samba on another TV), a Local File camera, or a cast automation
-always finds the map of the moment.
+always finds the map of the moment. The extension picks the encoding: `.png` lossless (about 11 MB),
+`.jpg` at the option `jpeg_quality` (about 3.5 MB at 95). List both to compare them on a screen.
 
     /share/...   the Samba share's `share` folder (the default, /share/atlas_frame/latest.jpg)
     /media/...   Home Assistant's media folder: also reachable as media-source://media_source/local/...,
@@ -18,12 +19,13 @@ MEDIA = "/media"
 class FileOutput:
     def __init__(self, path):
         self.path = path
+        self.kind = "png" if path.lower().endswith(".png") else "jpg"
 
-    def write(self, jpeg):
+    def write(self, data):
         os.makedirs(os.path.dirname(self.path) or ".", exist_ok=True)
         tmp = self.path + ".tmp"
         with open(tmp, "wb") as f:
-            f.write(jpeg)
+            f.write(data)
         os.replace(tmp, self.path)
 
     def media_id(self):
@@ -43,8 +45,8 @@ def parse(paths):
             continue
         if not os.path.isabs(p):
             raise ValueError(f"output file {p!r} is not a full path (e.g. /share/atlas_frame/latest.jpg)")
-        if not p.lower().endswith((".jpg", ".jpeg")):
-            raise ValueError(f"output file {p!r} must end in .jpg")
+        if not p.lower().endswith((".jpg", ".jpeg", ".png")):
+            raise ValueError(f"output file {p!r} must end in .jpg or .png")
         seen.add(p)
         out.append(FileOutput(p))
     return out

@@ -38,7 +38,7 @@ not upload. If the TV or a data source does not answer, it waits or leaves that 
    sensors: `temperature` in **degrees C**, `pressure` in **hPa**, `wind_speed` in **m/s** (not
    km/h), `wind_from` in **degrees** the wind blows from. Empty fields are fine; a sensor in other
    units has to be converted first.
-7. **Maps:** **The World** is built in; there is nothing to set up.
+7. **Maps:** **The World** and **The World (population)** are built in; there is nothing to set up.
 8. **Start** the add-on. It begins in **preview** mode: no TV needed, each picture is written to
    `/share/atlas_frame/latest.jpg` (the `share` folder on the Samba share). To watch it without
    opening the share, add a *Local File* camera or a *Picture* card pointing at that file. That
@@ -65,7 +65,9 @@ Not tested on a real TV yet (see the end of this page). Start in preview mode fi
      pack (download, release asset or NAS) and document it here; then restore the Install step about
      regional maps and the README line about them. -->
 
-The add-on comes with **The World** (W1). More maps can be added beside it, without
+The add-on comes with **The World** (W1) and **The World (population)** (W1P: the same sheet with
+where people live in place of the countries' colours, by day the density as a heat, by night the
+lights of the cities). More maps can be added beside them, without
 rebuilding or updating the add-on, from either of two folders:
 
 - **My maps:** the add-on's own folder, `addon_configs/e353e52e_atlas_frame/maps` on the Samba share
@@ -79,7 +81,7 @@ rebuilding or updating the add-on, from either of two folders:
 Both take the same layout, which the atlas renderer writes:
 
 ```
-R7_4k.jpg  R7N_4k.jpg     the day and night maps, 3840 x 2160
+R7_4k.png  R7N_4k.png     the day and night maps, 3840 x 2160, lossless (.jpg also works)
 places/R7.json            the map's places, label boxes and legend spot
 grids/R7.npz              the map's globe grid
 ```
@@ -88,6 +90,12 @@ A map joins the rotation at its next turn once all four of its files are there; 
 skipped. `sensor.atlas_frame` lists `maps_available`, and `maps_missing` names the chosen maps that
 are not installed. The same folders also **update** a map: a newer copy of a built-in or
 side-loaded file is used at the map's next turn.
+
+**Lossless maps:** the map pictures can be `.png` or `.jpg`. Use PNG: every picture the add-on
+makes starts from these, so a JPEG base map's softness (colour stored at half resolution, which
+blurs thin coloured lettering) is in every render after it. Within a folder the `.png` is used
+before the `.jpg`, so dropping a PNG beside a JPEG upgrades that map at its next turn.
+`files_from` on the sensor says which kind was used, e.g. `my maps (png)`.
 
 For each file the add-on uses the first good copy: the maps folder, then my maps, then the built-in
 one. A file that is incomplete or not 3840 x 2160 is skipped, with a note, so a half-copied map
@@ -98,8 +106,16 @@ shows where the map on the wall came from.
 are left where they are and ignored until you set it back to `auto`.
 
 ## Other screens
-Every push also writes the picture (3840 x 2160 JPEG) to each path in the option `output_files`, the
-Frame or not. The file is replaced in one step, so a player never reads half a picture. Default:
+Every push also writes the picture (3840 x 2160) to each path in the option `output_files`, the
+Frame or not. The extension picks the encoding:
+
+| Extension | Encoding | Size |
+|---|---|---|
+| `.png` | lossless | about 11 MB |
+| `.jpg` | JPEG at the option `jpeg_quality` (default 95), colour at full resolution | about 3.5 MB at 95 |
+
+To compare them on a screen, list both (`latest.jpg` and `latest.png`) and switch between them in
+the player. The Frame always gets the JPEG. The file is replaced in one step, so a player never reads half a picture. Default:
 `/share/atlas_frame/latest.jpg`. Add or change paths to suit the screen; remove them all if only the
 Frame should get the maps. A path must be a full path ending in `.jpg`; the folder is made if needed.
 
@@ -152,7 +168,7 @@ takes a picture: a notification, a wall tablet, an upload.
 | `input_boolean.atlas_frame_weather` | Temperature and wind at each map's cities (first draft look) |
 | `input_boolean.atlas_frame_home_readings` | Your own sensors at home, where home is on the map |
 
-Map ids: W1 The World, R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
+Map ids: W1 The World, W1P The World (population), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
 R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asia, R11 United
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
 R16 Central America.

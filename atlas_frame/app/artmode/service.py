@@ -24,9 +24,9 @@ ART_POLL = 15               # seconds between asking the TV whether it is in Art
 RETRY = 60                  # seconds before trying again after a failed push
 
 MODES = {"Follow the sun": "follow", "Home light": "home", "Hold day": "day", "Hold dark": "night"}
-ALL_MAPS = ["W1", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
+ALL_MAPS = ["W1", "W1P", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
             "R13", "R14", "R15", "R16"]
-NAMES = {"W1": "The World", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
+NAMES = {"W1": "The World", "W1P": "The World (population)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
          "R5": "South America", "R6": "Oceania", "R7": "Scandinavia", "R8": "Northern Africa",
          "R9": "The Middle East", "R10": "East Asia", "R11": "United States", "R12": "Southern Europe",
          "R13": "Southern Africa", "R14": "Indian Subcontinent", "R15": "British Isles",
@@ -89,7 +89,7 @@ class Store:
 
 
 class Service:
-    def __init__(self, hass, frame, options, store, clock=time.time, renderer=render.render,
+    def __init__(self, hass, frame, options, store, clock=time.time, renderer=render.render_image,
                  weather=None, home=None, place=None, tz=None, files_out=()):
         self.hass, self.frame, self.opt, self.store = hass, frame, options, store   # frame: None = no TV
         self.files_out = list(files_out)    # outputs.FileOutput, written on every push
@@ -181,17 +181,26 @@ class Service:
         files.reset()
         try:
             data, lay, notes = self.data_for(map_id, c)
-            jpeg = self.renderer(map_id, t, c.mode, home=self.home or render.HOME, layers=lay, data=data)
-            if self.renderer is render.render and render.LAYER_ERRORS:
+            pic = self.renderer(map_id, t, c.mode, home=self.home or render.HOME, layers=lay, data=data)
+            quality = int(self.opt.get("jpeg_quality") or 95)
+            encoded = {}
+
+            def as_(kind):                  # each encoding made once per push, only if wanted
+                if kind not in encoded:
+                    encoded[kind] = render.encode(pic, kind, quality)
+                return encoded[kind]
+            if self.renderer is render.render_image and render.LAYER_ERRORS:
                 notes = "; ".join([n for n in [notes] + render.LAYER_ERRORS if n])
             if files.PROBLEMS:              # a side-loaded file skipped: the next source's copy was used
                 notes = "; ".join([n for n in [notes] + files.PROBLEMS if n])
-            source = {"day": files.SOURCES.get(f"{map_id}_4k.jpg"), "night": files.SOURCES.get(f"{map_id}N_4k.jpg"),
-                      "places": files.SOURCES.get(f"{map_id} places"), "grid": files.SOURCES.get(f"{map_id} grid")}
+            pics = {k: f"{map_id}{n}_4k" for k, n in (("day", ""), ("night", "N"))}
+            source = {k: f"{files.SOURCES[s]} ({files.KINDS.get(s)})" if s in files.SOURCES else None
+                      for k, s in pics.items()}
+            source.update(places=files.SOURCES.get(f"{map_id} places"), grid=files.SOURCES.get(f"{map_id} grid"))
             written, failed = [], []
             for out in self.files_out:      # one unwritable file never stops the others or the TV
                 try:
-                    out.write(jpeg)
+                    out.write(as_(out.kind))
                     written.append(out)
                 except Exception as e:
                     failed.append(f"{out.path}: {e.__class__.__name__}: {e}")
@@ -199,7 +208,7 @@ class Service:
                 raise OSError("; ".join(failed))
             cid = None
             if to_tv:
-                cid = self.frame.upload(jpeg)
+                cid = self.frame.upload(as_("jpg"))
                 if cid not in s.d["uploaded"]:
                     s.d["uploaded"].append(cid)
                 s.save()                    # record it before anything else can fail
@@ -210,7 +219,8 @@ class Service:
                                error="; ".join(failed) or None, notes=notes or None,
                                files_from={k: v for k, v in source.items() if v})
             where = [o.path for o in written] + ([f"TV as {cid}"] if cid else [])
-            log(f"{map_id} {NAMES[map_id]} ({c.mode}, {why}) {len(jpeg) / 1e6:.1f} MB to {', '.join(where)}")
+            sizes = ", ".join(f"{k} {len(v) / 1e6:.1f} MB" for k, v in encoded.items())
+            log(f"{map_id} {NAMES[map_id]} ({c.mode}, {why}) {sizes} to {', '.join(where)}")
             self.announce(map_id, c, t, written, cid)
         except Exception as e:
             s.d["index"] = (s.d["index"] - 1) % len(rotation)  # the same map again next time

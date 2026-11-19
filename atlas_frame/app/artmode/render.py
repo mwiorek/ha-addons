@@ -56,9 +56,9 @@ def _load_grid(map_id):
 
 
 def _load_map(name):
-    """A 4K map picture as an RGB array: from the first source (artmode/files.py) with a complete
-    one of the right size."""
-    for src, path in files.candidates("", name, MAPS):
+    """A 4K map picture ("R1_4k") as an RGB array: from the first source (artmode/files.py) with a
+    complete one of the right size, its lossless .png before its .jpg."""
+    for src, path in files.picture_candidates(name, MAPS):
         if not os.path.exists(path):
             continue
         try:
@@ -67,9 +67,10 @@ def _load_map(name):
             if im.size != (W, H):
                 raise ValueError(f"{im.size[0]} x {im.size[1]}, not {W} x {H}")
             files.SOURCES[name] = src
+            files.KINDS[name] = os.path.splitext(path)[1][1:]
             return np.asarray(im.convert("RGB"))
         except Exception as e:
-            files.PROBLEMS.append(f"{name} from {src}: {e.__class__.__name__}: {e}")
+            files.PROBLEMS.append(f"{os.path.basename(path)} from {src}: {e.__class__.__name__}: {e}")
     raise FileNotFoundError(f"no picture {name}")
 
 
@@ -230,9 +231,26 @@ class Context:
 LAYER_ERRORS = []                          # filled by the last render(): layers that failed and were left out
 
 
-def render(map_id, t, mode="follow", quality=90, home=HOME, layers=(), data=None):
-    """JPEG bytes of map_id at time t (aware datetime). home = (lat, lon) for the home-light mode;
-    layers draw data on top (artmode/layers.py), each given a Context with `data`."""
+def encode(pic, kind="jpg", quality=95):
+    """The picture as file bytes: "png" lossless (fast setting: the files go over the LAN, not the
+    internet), or "jpg" at `quality` with full-resolution colour (4:4:4), which keeps thin coloured
+    lettering and borders sharp."""
+    buf = io.BytesIO()
+    if kind == "png":
+        pic.save(buf, "PNG", compress_level=1)
+    else:
+        pic.save(buf, "JPEG", quality=quality, subsampling=0)
+    return buf.getvalue()
+
+
+def render(map_id, t, mode="follow", quality=95, **kw):
+    """JPEG bytes of render_image(...)."""
+    return encode(render_image(map_id, t, mode, **kw), "jpg", quality)
+
+
+def render_image(map_id, t, mode="follow", home=HOME, layers=(), data=None):
+    """The picture (PIL image) of map_id at time t (aware datetime). home = (lat, lon) for the
+    home-light mode; layers draw data on top (artmode/layers.py), each given a Context with `data`."""
     LAYER_ERRORS.clear()
     grid = Grid(map_id)
     s = ephem.sun_vec(t)
@@ -248,11 +266,11 @@ def render(map_id, t, mode="follow", quality=90, home=HOME, layers=(), data=None
     def load(f):
         return _load_map(f)
     if w.min() >= 1:
-        img = load(f"{map_id}_4k.jpg").copy()
+        img = load(f"{map_id}_4k").copy()
     elif w.max() <= 0:
-        img = load(f"{map_id}N_4k.jpg").copy()
+        img = load(f"{map_id}N_4k").copy()
     else:
-        img = _lit(load(f"{map_id}_4k.jpg"), load(f"{map_id}N_4k.jpg"), w)
+        img = _lit(load(f"{map_id}_4k"), load(f"{map_id}N_4k"), w)
 
     m = ephem.moon_vec(t)
     k = ephem.lit_fraction(t)
@@ -299,9 +317,7 @@ def render(map_id, t, mode="follow", quality=90, home=HOME, layers=(), data=None
                 layer.draw(pic, ctx)
             except Exception as e:      # a broken layer is left out; the map still goes up
                 LAYER_ERRORS.append(f"{getattr(layer, 'name', 'layer')} left out: {e.__class__.__name__}: {e}")
-    buf = io.BytesIO()
-    pic.save(buf, "JPEG", quality=quality, subsampling=2)
-    return buf.getvalue()
+    return pic
 
 
 if __name__ == "__main__":
