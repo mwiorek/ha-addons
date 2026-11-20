@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+- New built-in map: **The World (temperature)**, `W1T`. The mean annual temperature of land and sea surface (WorldClim 2.1, NOAA OI SST, 1970-2000) in place of the political colours; by night a dark tint under the real city lights. Ships lossless (PNG). Add `W1T` to `input_text.atlas_frame_maps` to put it in the rotation.
+- New built-in map: **The World (temperature now)**, `W1L`. W1T's sheet coloured by the current temperature (NOAA GFS: air over land, surface over sea), fetched every two hours from the PacIOOS ERDDAP server and applied once per fetch, so the two-minute pushes cost the same as any map. The legend shows the hour's values at five places and the model time; without data for 12 hours it falls back to the 1970-2000 average and says so. `sensor.atlas_frame` reports the live data's source, time and last error. Needs internet access. Add `W1L` to `input_text.atlas_frame_maps`.
+- The population and temperature Worlds carry their own legend (colour bar, scale, reference places) in the bottom-left box, in place of the table of nations.
+- The World, W1, now ships lossless (PNG), and without the engraved lines along every coast.
+
 ## 0.5.0
 - New built-in map: **The World (population)**, `W1P`. The same sheet with population density in place of the political colours by day, and city lights by night. Ships lossless (PNG). It joins the rotation by default; with the helpers package, add `W1P` to `input_text.atlas_frame_maps`.
 - Lossless base maps: the map pictures can be `.png` (`R7_4k.png`), used before a `.jpg` in the same folder. Drop a PNG beside a map's JPEG to upgrade it. (The political World, W1, is still JPEG in this release.)
