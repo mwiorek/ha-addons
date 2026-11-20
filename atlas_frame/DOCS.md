@@ -65,9 +65,17 @@ Not tested on a real TV yet (see the end of this page). Start in preview mode fi
      pack (download, release asset or NAS) and document it here; then restore the Install step about
      regional maps and the README line about them. -->
 
-The add-on comes with **The World** (W1) and **The World (population)** (W1P: the same sheet with
+The add-on comes with **The World** (W1), **The World (population)** (W1P: the same sheet with
 where people live in place of the countries' colours, by day the density as a heat, by night the
-lights of the cities). More maps can be added beside them, without
+lights of the cities) and **The World (temperature)** (W1T: the mean annual temperature of land and
+sea, 1970 to 2000, with the real city lights by night). **The World (temperature now)** (W1L) is the
+same sheet coloured by the current temperature: every two hours the add-on fetches the NOAA GFS model's
+air temperature over land and sea surface temperature (about 2 MB, from the PacIOOS ERDDAP server at
+pae-paha.pacioos.hawaii.edu, so Home Assistant needs internet access) and recolours the map once; the
+pushes in between cost no more than any other map. Its legend shows the hour's values at a few places
+and the model time. If the server cannot be reached the last data is kept; after 12 hours without
+data the map shows the 1970 to 2000 average instead, and its legend says so. Each data map carries its
+own legend in the bottom-left box. More maps can be added beside them, without
 rebuilding or updating the add-on, from either of two folders:
 
 - **My maps:** the add-on's own folder, `addon_configs/e353e52e_atlas_frame/maps` on the Samba share
@@ -168,13 +176,15 @@ takes a picture: a notification, a wall tablet, an upload.
 | `input_boolean.atlas_frame_weather` | Temperature and wind at each map's cities (first draft look) |
 | `input_boolean.atlas_frame_home_readings` | Your own sensors at home, where home is on the map |
 
-Map ids: W1 The World, W1P The World (population), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
+Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
 R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asia, R11 United
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
 R16 Central America.
 
 `sensor.atlas_frame`: the map on the wall, with mode, when it was pushed, when the next is due,
-whether Art Mode is on, and the last error or note.
+whether Art Mode is on, and the last error or note. After a push of W1L, `live` says where its
+colours came from (`live` or `climate`), the model time on its legend, when it last fetched, and the
+last fetch error.
 
 A dashboard card:
 ```yaml

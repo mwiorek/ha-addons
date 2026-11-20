@@ -263,8 +263,11 @@ def render_image(map_id, t, mode="follow", home=HOME, layers=(), data=None):
             wh = 1.0 if mode == "day" else 0.0
         w = np.full((grid.gh, grid.gw), wh, np.float32)
 
-    def load(f):
-        return _load_map(f)
+    from . import live
+    live_pics = live.pictures(map_id, grid, _load_map) if live.is_live(map_id) else None
+
+    def load(f):                        # a live map's two sheets are coloured by the hour's data (artmode/live.py)
+        return live_pics[f.endswith("N_4k")] if live_pics is not None else _load_map(f)
     if w.min() >= 1:
         img = load(f"{map_id}_4k").copy()
     elif w.max() <= 0:
