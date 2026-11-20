@@ -25,7 +25,7 @@ The credits are kept here, not printed on the maps. Anyone who shares a map shou
 
 | Source | Used for | Terms |
 |--------|----------|-------|
-| Natural Earth, naturalearthdata.com | Coastlines, borders, rivers, lakes, places, Gray Earth relief, land cover, time zones | Public domain |
+| Natural Earth, naturalearthdata.com | Coastlines, borders, rivers, lakes, places, Gray Earth relief, land cover, time zones; the countries' GDP and population figures behind the economic output map (W1G) | Public domain |
 | NOAA NCEI ETOPO 2022 (60 arc-second), doi:10.25921/fd45-gt74 | Elevation, sea-floor relief, peaks | Public domain |
 | IHO-IOC GEBCO Gazetteer of Undersea Feature Names, www.gebco.net | Undersea names | Free, with credit |
 | OSCAR surface currents (Earth & Space Research), via NOAA CoastWatch ERDDAP `jplOscar` | Ocean currents | Free to use and redistribute |
