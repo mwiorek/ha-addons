@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.2
+- New built-in map: **The World (economic output)**, `W1G`. What the people round each place produce in a year, estimated from Natural Earth's places and each country's GDP per person, as a smooth gradient: deep red in the rich city centres, through sand, to blue on land with little or no output. By night the same colours under the real city lights, dimmed so the red still shows. Its own legend in the bottom-left box. Ships lossless (PNG). Add `W1G` to `input_text.atlas_frame_maps` to put it in the rotation.
+
 ## 0.5.1
 - New built-in map: **The World (temperature)**, `W1T`. The mean annual temperature of land and sea surface (WorldClim 2.1, NOAA OI SST, 1970-2000) in place of the political colours; by night a dark tint under the real city lights. Ships lossless (PNG). Add `W1T` to `input_text.atlas_frame_maps` to put it in the rotation.
 - New built-in map: **The World (temperature now)**, `W1L`. W1T's sheet coloured by the current temperature (NOAA GFS: air over land, surface over sea), fetched every two hours from the PacIOOS ERDDAP server and applied once per fetch, so the two-minute pushes cost the same as any map. The legend shows the hour's values at five places and the model time; without data for 12 hours it falls back to the 1970-2000 average and says so. `sensor.atlas_frame` reports the live data's source, time and last error. Needs internet access. Add `W1L` to `input_text.atlas_frame_maps`.

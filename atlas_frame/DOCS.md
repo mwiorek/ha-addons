@@ -68,7 +68,10 @@ Not tested on a real TV yet (see the end of this page). Start in preview mode fi
 The add-on comes with **The World** (W1), **The World (population)** (W1P: the same sheet with
 where people live in place of the countries' colours, by day the density as a heat, by night the
 lights of the cities) and **The World (temperature)** (W1T: the mean annual temperature of land and
-sea, 1970 to 2000, with the real city lights by night). **The World (temperature now)** (W1L) is the
+sea, 1970 to 2000, with the real city lights by night) and **The World (economic output)** (W1G: what
+the people round each place produce, estimated from where people live and their country's GDP per person,
+red in the rich city centres and blue on land with little or none; by night under dimmed city lights).
+**The World (temperature now)** (W1L) is the
 same sheet coloured by the current temperature: every two hours the add-on fetches the NOAA GFS model's
 air temperature over land and sea surface temperature (about 2 MB, from the PacIOOS ERDDAP server at
 pae-paha.pacioos.hawaii.edu, so Home Assistant needs internet access) and recolours the map once; the
@@ -176,7 +179,7 @@ takes a picture: a notification, a wall tablet, an upload.
 | `input_boolean.atlas_frame_weather` | Temperature and wind at each map's cities (first draft look) |
 | `input_boolean.atlas_frame_home_readings` | Your own sensors at home, where home is on the map |
 
-Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
+Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), W1G The World (economic output), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
 R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asia, R11 United
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
 R16 Central America.

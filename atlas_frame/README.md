@@ -8,7 +8,7 @@ time, cut to the next every few minutes, controlled from Home Assistant helpers 
 
 ![The World, lit by the live sun and moon](https://raw.githubusercontent.com/mwiorek/ha-addons/main/images/world-follow-sun.jpg)
 
-- Built in: **The World** (day and night, aged-sheet engraving) and **The World (population)**.
+- Built in: **The World** (day and night, aged-sheet engraving) and its data forms: population, temperature, temperature now and economic output.
 - Starts in preview mode: no TV needed, each picture lands in `/share/atlas_frame/latest.jpg`.
 - Optional weather cartouche (barometer, temperature, wind rose) and city weather from Open-Meteo.
 
