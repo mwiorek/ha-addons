@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.4
+- **Map packs**: further maps come as one licensed `.atlaspack` file. Copy it into `share/atlas_frame/packs`; the add-on checks its licence and files, installs it into its own storage and lists it, with the licensee, under `map_packs` on `sensor.atlas_frame`. Delete the file to remove the pack.
+- Maps that are not built in now need an installed pack whose licence covers them; maps copied loose into the maps folders without one are no longer shown.
+
 ## 0.5.3
 - New map id: **The World (land cover)**, `W1U`. The add-on knows it but does not ship it: put its four files (`W1U_4k.png`, `W1UN_4k.png`, `places/W1U.json`, `grids/W1U.npz`) into the add-on's maps folder and add `W1U` to `input_text.atlas_frame_maps`.
 

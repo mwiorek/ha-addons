@@ -61,10 +61,6 @@ Not tested on a real TV yet (see the end of this page). Start in preview mode fi
    upload but the picture does not change, turn on the add-on option `select_show` and restart.
 
 ## Maps
-<!-- TODO - map-packs: the regional maps (R1 to R16) are not published. Decide how people get a map
-     pack (download, release asset or NAS) and document it here; then restore the Install step about
-     regional maps and the README line about them. -->
-
 The add-on comes with **The World** (W1), **The World (population)** (W1P: the same sheet with
 where people live in place of the countries' colours, by day the density as a heat, by night the
 lights of the cities) and **The World (temperature)** (W1T: the mean annual temperature of land and
@@ -80,7 +76,7 @@ and the model time. If the server cannot be reached the last data is kept; after
 data the map shows the 1970 to 2000 average instead, and its legend says so. Each data map carries its
 own legend in the bottom-left box. **The World (land cover)** (W1U: forest, cropland, pasture, towns
 and desert, blended where they share the ground) is known to the add-on but not shipped with it: it
-joins the rotation once its files are side-loaded like any regional map. More maps can be added beside them, without
+joins the rotation once its files are installed beside the add-on. More maps can be added beside them, without
 rebuilding or updating the add-on, from either of two folders:
 
 - **My maps:** the add-on's own folder, `addon_configs/e353e52e_atlas_frame/maps` on the Samba share
@@ -117,6 +113,21 @@ shows where the map on the wall came from.
 
 **Back to the built-in maps:** set the option `maps_source: templates` and restart. Side-loaded files
 are left where they are and ignored until you set it back to `auto`.
+
+
+### Map packs
+
+Further maps come as **map packs**: one `.atlaspack` file per purchase, licensed to you.
+
+1. Copy the file, as it is (do not unzip it), into `share/atlas_frame/packs` on Home Assistant
+   (over Samba: `\\homeassistant\share\atlas_frame\packs`; the folder appears once the add-on has started).
+2. Within a minute the add-on checks the pack's licence, installs its maps into its own storage and
+   lists the pack under `map_packs` on `sensor.atlas_frame`, with the name it is licensed to.
+3. Add the pack's map ids to `input_text.atlas_frame_maps` to put them in the rotation.
+
+Delete the file to remove the pack; replace it to update it. A pack whose licence does not check out,
+or whose files were changed, is not installed and is listed under `map_packs: refused` with the reason.
+A map that is not built into the add-on is shown only while an installed pack's licence covers it.
 
 ## Other screens
 Every push also writes the picture (3840 x 2160) to each path in the option `output_files`, the
@@ -181,7 +192,7 @@ takes a picture: a notification, a wall tablet, an upload.
 | `input_boolean.atlas_frame_weather` | Temperature and wind at each map's cities (first draft look) |
 | `input_boolean.atlas_frame_home_readings` | Your own sensors at home, where home is on the map |
 
-Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), W1G The World (economic output), W1U The World (land cover, side-loaded), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
+Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), W1G The World (economic output), W1U The World (land cover, not built in), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
 R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asia, R11 United
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
 R16 Central America.

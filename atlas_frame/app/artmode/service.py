@@ -16,7 +16,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 
-from . import files, layers, legend, outputs, places, render, sources
+from . import files, layers, legend, outputs, packs, places, render, sources
 
 DATA = os.environ.get("ATLAS_DATA", "/data")
 TICK = 5                    # seconds between looks at the controls
@@ -26,11 +26,18 @@ RETRY = 60                  # seconds before trying again after a failed push
 MODES = {"Follow the sun": "follow", "Home light": "home", "Hold day": "day", "Hold dark": "night"}
 ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1G", "W1U", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
             "R13", "R14", "R15", "R16"]
+DEFAULT_MAPS = list(ALL_MAPS)          # the rotation when the helper names none; the forms below join only by name
 NAMES = {"W1": "The World", "W1P": "The World (population)", "W1T": "The World (temperature)", "W1L": "The World (temperature now)", "W1G": "The World (economic output)", "W1U": "The World (land cover)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
          "R5": "South America", "R6": "Oceania", "R7": "Scandinavia", "R8": "Northern Africa",
          "R9": "The Middle East", "R10": "East Asia", "R11": "United States", "R12": "Southern Europe",
          "R13": "Southern Africa", "R14": "Indian Subcontinent", "R15": "British Isles",
          "R16": "Central America"}
+# side-loaded forms of a map: <id>P (population), <id>T (temperature), <id>L (temperature now)
+FORMS = {"P": "population", "T": "temperature", "L": "temperature now"}
+for _r in [m for m in ALL_MAPS if m.startswith("R")]:
+    for _f, _what in FORMS.items():
+        NAMES[_r + _f] = f"{NAMES[_r]} ({_what})"
+ALL_MAPS += [m + f for m in ALL_MAPS if m.startswith("R") for f in FORMS]
 
 # the helpers, and what the add-on does when one is missing
 H_ON, H_MODE, H_MINUTES = "input_boolean.atlas_frame_on", "input_select.atlas_frame_mode", "input_number.atlas_frame_minutes"
@@ -40,7 +47,7 @@ H_LEGEND = "input_boolean.atlas_frame_legend"
 STATUS = "sensor.atlas_frame"
 EVENT = "atlas_frame_rendered"
 DEFAULT_OUTPUT = "/share/atlas_frame/latest.jpg"
-DEFAULTS = {H_ON: "on", H_MODE: "Follow the sun", H_MINUTES: "2", H_MAPS: ",".join(ALL_MAPS),
+DEFAULTS = {H_ON: "on", H_MODE: "Follow the sun", H_MINUTES: "2", H_MAPS: ",".join(DEFAULT_MAPS),
             H_NEXT: "", H_WEATHER: "off", H_HOME: "off", H_LEGEND: "on"}
 
 
@@ -60,7 +67,7 @@ class Controls:
         except ValueError:
             self.minutes = 2.0
         wanted = [m.strip().upper() for m in raw[H_MAPS].split(",")]
-        self.maps = [m for m in wanted if m in ALL_MAPS] or list(ALL_MAPS)
+        self.maps = [m for m in wanted if m in ALL_MAPS] or list(DEFAULT_MAPS)
         self.next = raw[H_NEXT]
         self.weather, self.home = raw[H_WEATHER] == "on", raw[H_HOME] == "on"
         self.legend = raw[H_LEGEND] == "on"
@@ -135,6 +142,11 @@ class Service:
     def tick(self):
         now = self.clock()
         c = self.controls()
+        try:                                # licensed map packs dropped in (or taken out) since the last look
+            if packs.scan():
+                log("maps installed: " + ", ".join(m for m in ALL_MAPS if files.available(m)))
+        except Exception as e:
+            log(f"map packs: {e}")
         if c.legend:                        # the barometer's tendency needs samples, TV on or off
             try:
                 self.home_weather.sample(now)
@@ -298,6 +310,9 @@ class Service:
                  "minutes_per_map": c.minutes, "maps": c.maps, "art_mode": self.art,
                  "tv": self.frame is not None, "output_files": [o.path for o in self.files_out],
                  **{k: v for k, v in self.status.items() if v is not None}}
+        pk = packs.summary()
+        if pk["installed"] or pk["refused"]:          # who each map pack is licensed to, and any refused
+            attrs["map_packs"] = pk
         if self.last_push > 0:
             attrs["next_push_at"] = datetime.fromtimestamp(self.last_push + c.minutes * 60, timezone.utc) \
                 .isoformat(timespec="seconds")
@@ -342,6 +357,14 @@ def main():
                 log(f"my maps: {files.OWN} (empty; unzip a map pack there to add maps)")
             except OSError:
                 pass
+    if not files.TEMPLATES_ONLY:
+        try:                                # the map pack inbox, so it shows on the Samba share
+            os.makedirs(packs.INBOX, exist_ok=True)
+        except OSError:
+            pass
+        packs.scan(force=True)
+        log(f"map packs: {packs.INBOX}, " + (", ".join(f"{p['pack']} (licensed to {p['licensee']})"
+                                                      for p in packs.summary()["installed"]) or "none installed"))
     log("maps installed: " + ", ".join(m for m in ALL_MAPS if files.available(m)))
     hass = Hass()
     try:

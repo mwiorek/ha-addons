@@ -1,5 +1,8 @@
-"""The World (temperature now), W1L: W1T's sheet coloured by the current temperature, made on the Home Assistant
-machine with numpy and Pillow only.
+"""The live temperature maps, such as The World (temperature now), W1L: a temperature sheet coloured by the current
+temperature, made on the Home Assistant machine with numpy and Pillow only.
+
+A map is live when its <id>.live.json is found beside its pictures (the maps folder, my maps or the built-in maps,
+artmode/files.py). All live maps colour from one fetch: the data is stored per source, not per map.
 
 Every two hours (W1L.live.json refresh_s) the 2 m air temperature (land) and the surface temperature (sea) of the
 NOAA GFS model come from the PacIOOS ERDDAP server as OPeNDAP binary (.dods: a text header, then big-endian
@@ -28,27 +31,40 @@ import urllib.request
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
-LIVE = ("W1L",)                    # live map ids; each has <id>.live.json beside its pictures
 DATA = os.environ.get("ATLAS_DATA", "/data")
 RETRY_S = 20 * 60                  # after a failed fetch, try again this much later (not every push)
 TIMEOUT_S = 90
 CACHE = {}                         # map id -> {"key", "pics": (day, night), "info"}
-STATE = {}                         # map id -> {"tried", "error", "fetched", "valid"}
+STATE = {}                         # source key -> {"tried", "error", "fetched", "valid"}
+SOURCE_OF = {}                     # map id -> its source key
 FETCH = None                       # tests: a function(url) -> bytes in place of the network
 
 
-def is_live(map_id):
-    return map_id in LIVE
-
-
-def _maps_dir():
+def _find(name):
+    """The first readable copy of a live map's side file (<id>.live.json, <id>.climate.npz) in the map sources."""
     from . import files
-    return files.builtin_dirs()[0]
+    for _, p in files.candidates("", name, files.builtin_dirs()[0]):
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def is_live(map_id):
+    return _find(f"{map_id}.live.json") is not None
 
 
 def meta(map_id):
-    with open(os.path.join(_maps_dir(), f"{map_id}.live.json"), encoding="utf-8") as f:
+    p = _find(f"{map_id}.live.json")
+    if p is None:
+        raise FileNotFoundError(f"{map_id}.live.json")
+    with open(p, encoding="utf-8") as f:
         return json.load(f)
+
+
+def source_key(m):
+    """One name per data source and grid, so every live map on it shares a fetch (and its stored copy)."""
+    s = m["source"]
+    return "gfs" if "ncep_global" in s["url"] else "src" + str(abs(hash((s["url"], s["land"], s["sea"]))) % 10 ** 8)
 
 
 # --- data --------------------------------------------------------------------------
@@ -109,8 +125,8 @@ def fetch(map_id, now):
     return land, sea, t
 
 
-def _store_path(map_id):
-    return os.path.join(DATA, "live", f"{map_id}.npz")
+def _store_path(key):
+    return os.path.join(DATA, "live", f"{key}.npz")
 
 
 def field(map_id, now=None):
@@ -118,8 +134,9 @@ def field(map_id, now=None):
     means when there is none or it is older than stale_s. info: {"source": "live"|"climate", "valid", "note"}."""
     now = time.time() if now is None else now
     m = meta(map_id)
-    st = STATE.setdefault(map_id, {"tried": 0.0, "error": None, "fetched": 0.0, "valid": None})
-    path = _store_path(map_id)
+    key = SOURCE_OF[map_id] = source_key(m)
+    st = STATE.setdefault(key, {"tried": 0.0, "error": None, "fetched": 0.0, "valid": None})
+    path = _store_path(key)
     if st["valid"] is None and os.path.exists(path):         # after a restart: what was fetched before
         try:
             z = np.load(path)
@@ -141,7 +158,7 @@ def field(map_id, now=None):
     if st["valid"] is not None and abs(now - st["valid"]) <= m["stale_s"] and os.path.exists(path):
         z = np.load(path)
         return z["land"], z["sea"], {"source": "live", "valid": st["valid"], "note": st["error"]}
-    z = np.load(os.path.join(_maps_dir(), f"{map_id}.climate.npz"))
+    z = np.load(_find(f"{map_id}.climate.npz"))
     return (z["land"].astype(np.float32), z["sea"].astype(np.float32),
             {"source": "climate", "valid": None, "note": st["error"] or "no live data yet"})
 
@@ -201,6 +218,22 @@ def rebuild(c11, c21, c12, x1, x2, xl, xs, rows=270):
     return out
 
 
+def rebuild_combined(c11, c22, landw, x1, x2, xl, xs, rows=270):
+    """The sheet from the compact calibration (live.json "format": "combined"): the base (land and sea at X1), one
+    sheet with both at X2, and each pixel's land share (0..255, from the land and sea responses at build time).
+    The colour a pixel takes is the land and sea fields mixed by that share; along a coast the share mixes them as
+    the render does (within 2 levels of the three-sheet form)."""
+    out = np.empty(c11.shape, np.uint8)
+    d = 1.0 / (x2 - x1)
+    for y in range(0, c11.shape[0], rows):
+        sl = slice(y, y + rows)
+        b = c11[sl].astype(np.float32)
+        w = landw[sl, :, :1].astype(np.float32) / 255.0
+        x = (xl[sl] - x1) * w + (xs[sl] - x1) * (1 - w)
+        out[sl] = np.clip(b + x * (c22[sl] - b) * d + 0.5, 0, 255)
+    return out
+
+
 def _upscale(a, size):
     """(gh, gw, 3) -> (H, W, 3) float32, bilinear, one channel at a time."""
     return np.stack([np.asarray(Image.fromarray(np.ascontiguousarray(a[..., i], np.float32), "F")
@@ -211,6 +244,42 @@ def _deg(v):
     return f"{v:.0f}°".replace("-", "–")       # IM Fell has no minus sign
 
 
+def spread(ys, gap, lo, hi):
+    """Label tops for wanted tops `ys` (sorted), at least `gap` apart, kept inside [lo, hi]."""
+    out = list(ys)
+    for i in range(1, len(out)):
+        out[i] = max(out[i], out[i - 1] + gap)
+    if out and out[-1] > hi:
+        out[-1] = hi
+        for i in range(len(out) - 2, -1, -1):
+            out[i] = min(out[i], out[i + 1] - gap)
+    if out and out[0] < lo:
+        out[0] = lo
+        for i in range(1, len(out)):
+            out[i] = max(out[i], out[i - 1] + gap)
+    return out
+
+
+def _upright(d, g, places, fp, s):
+    """Places on an upright key (geometry orient "v"): a dot on the bar at the value, a leader out to the name on its
+    right."""
+    ink, paper = tuple(g["ink"]), tuple(g["paper"])
+    lo, hi, x0, x1, yt, yb = g["lo"], g["hi"], g["x0"], g["x1"], g["y_top"], g["y_bot"]
+    marks = sorted((yb - (yb - yt) * (min(max(v, lo), hi) - lo) / (hi - lo), f"{name} {_deg(v)}") for name, v in places)
+    sizes = []
+    for _, text in marks:
+        l, t, r, b = d.textbbox((0, 0), text, font=fp)
+        sizes.append((l, t, r - l, b - t))
+    tops = spread([y - sz[3] / 2 for (y, _), sz in zip(marks, sizes)], g["row_h"], yt - g["row_h"] * 0.5, yb)
+    right = g["box"][2] - 20 * s
+    for (y, text), (l, t, tw, th), ty in zip(marks, sizes, tops):
+        tx = min(g["label_x"], right - tw)
+        d.text((tx - l, ty - t), text, font=fp, fill=ink)
+        d.line([(x1, y), (x1 + 16 * s, y), (tx - 12 * s, ty + th / 2)], fill=ink, width=g["line"], joint="curve")
+        cx, r_ = (x0 + x1) / 2, g["dot"]
+        d.ellipse([cx - r_, y - r_, cx + r_, y + r_], fill=ink, outline=paper, width=g["line"])
+
+
 def draw_legend(img, g, places, stamp, fonts_dir):
     """The live places over the legend's bar (as w1_panels.legend_panel lays them) and the time stamp."""
     pic = Image.fromarray(img)
@@ -219,6 +288,12 @@ def draw_legend(img, g, places, stamp, fonts_dir):
     fp = ImageFont.truetype(os.path.join(fonts_dir, g["place_font"]), max(8, int(round(g["place_px"]))))
     fs = ImageFont.truetype(os.path.join(fonts_dir, g["place_font"]), max(8, int(round(g["stamp_px"]))))
     s = g["place_px"] / 36.0
+    if g.get("orient") == "v":
+        _upright(d, g, places, fp, s)
+        bx0, by0, bx1, by1 = g["box"]
+        l, t, r, b = d.textbbox((0, 0), stamp, font=fs)
+        d.text((bx1 - g["stamp_pad"][0] - (r - l) - l, by1 - g["stamp_pad"][1] - (b - t) - t), stamp, font=fs, fill=ink)
+        return np.asarray(pic)
     lo, hi, x0, x1, by, bh = g["lo"], g["hi"], g["x0"], g["x1"], g["by"], g["bh"]
     marks = sorted((x0 + (x1 - x0) * (min(max(v, lo), hi) - lo) / (hi - lo), f"{name} {_deg(v)}") for name, v in places)
     row_end = [-1e9, -1e9]
@@ -271,7 +346,10 @@ def pictures(map_id, grid, load, now=None):
         x1, x2 = m["x"][theme]
         xl = _upscale(colour_x(m, theme, tl), size)
         xs = _upscale(colour_x(m, theme, ts), size)
-        img = rebuild(c11, load(f"{stem}_land_4k"), load(f"{stem}_sea_4k"), x1, x2, xl, xs)
+        if m.get("format") == "combined":               # a regional map's compact calibration (live_build.py)
+            img = rebuild_combined(c11, load(f"{stem}_k_4k"), load(f"{map_id}_landw_4k"), x1, x2, xl, xs)
+        else:
+            img = rebuild(c11, load(f"{stem}_land_4k"), load(f"{stem}_sea_4k"), x1, x2, xl, xs)
         pics.append(draw_legend(img, m["legend"][theme], places, stamp, FONTS))
     CACHE[map_id] = {"key": key, "pics": tuple(pics), "info": dict(info, stamp=stamp, seconds=round(time.time() - t0, 2))}
     print(f"live {map_id}: pictures rebuilt from {info['source']} data in {time.time() - t0:.1f}s", flush=True)
@@ -280,6 +358,6 @@ def pictures(map_id, grid, load, now=None):
 
 def status(map_id):
     """For the sensor: where the colours came from, and when."""
-    c, st = CACHE.get(map_id, {}), STATE.get(map_id, {})
+    c, st = CACHE.get(map_id, {}), STATE.get(SOURCE_OF.get(map_id, ""), {})
     return {"source": (c.get("info") or {}).get("source"), "stamp": (c.get("info") or {}).get("stamp"),
             "fetched": st.get("fetched") or None, "error": st.get("error")}
