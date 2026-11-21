@@ -24,9 +24,9 @@ ART_POLL = 15               # seconds between asking the TV whether it is in Art
 RETRY = 60                  # seconds before trying again after a failed push
 
 MODES = {"Follow the sun": "follow", "Home light": "home", "Hold day": "day", "Hold dark": "night"}
-ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1G", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
+ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1G", "W1U", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
             "R13", "R14", "R15", "R16"]
-NAMES = {"W1": "The World", "W1P": "The World (population)", "W1T": "The World (temperature)", "W1L": "The World (temperature now)", "W1G": "The World (economic output)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
+NAMES = {"W1": "The World", "W1P": "The World (population)", "W1T": "The World (temperature)", "W1L": "The World (temperature now)", "W1G": "The World (economic output)", "W1U": "The World (land cover)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
          "R5": "South America", "R6": "Oceania", "R7": "Scandinavia", "R8": "Northern Africa",
          "R9": "The Middle East", "R10": "East Asia", "R11": "United States", "R12": "Southern Europe",
          "R13": "Southern Africa", "R14": "Indian Subcontinent", "R15": "British Isles",

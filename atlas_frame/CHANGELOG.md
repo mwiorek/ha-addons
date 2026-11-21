@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.3
+- New map id: **The World (land cover)**, `W1U`. The add-on knows it but does not ship it: put its four files (`W1U_4k.png`, `W1UN_4k.png`, `places/W1U.json`, `grids/W1U.npz`) into the add-on's maps folder and add `W1U` to `input_text.atlas_frame_maps`.
+
 ## 0.5.2
 - New built-in map: **The World (economic output)**, `W1G`. What the people round each place produce in a year, estimated from Natural Earth's places and each country's GDP per person, as a smooth gradient: deep red in the rich city centres, through sand, to blue on land with little or no output. By night the same colours under the real city lights, dimmed so the red still shows. Its own legend in the bottom-left box. Ships lossless (PNG). Add `W1G` to `input_text.atlas_frame_maps` to put it in the rotation.
 
