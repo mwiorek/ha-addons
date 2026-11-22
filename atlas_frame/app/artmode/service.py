@@ -16,7 +16,7 @@ import time
 import traceback
 from datetime import datetime, timezone
 
-from . import files, layers, legend, outputs, packs, places, render, sources
+from . import clockmap, files, layers, legend, outputs, packs, places, render, sources
 
 DATA = os.environ.get("ATLAS_DATA", "/data")
 TICK = 5                    # seconds between looks at the controls
@@ -24,7 +24,7 @@ ART_POLL = 15               # seconds between asking the TV whether it is in Art
 RETRY = 60                  # seconds before trying again after a failed push
 
 MODES = {"Follow the sun": "follow", "Home light": "home", "Hold day": "day", "Hold dark": "night"}
-ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1G", "W1U", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
+ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1G", "W1U", "W1Z", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
             "R13", "R14", "R15", "R16"]
 DEFAULT_MAPS = list(ALL_MAPS)          # the rotation when the helper names none; the forms below join only by name
 NAMES = {"W1": "The World", "W1P": "The World (population)", "W1T": "The World (temperature)", "W1L": "The World (temperature now)", "W1G": "The World (economic output)", "W1U": "The World (land cover)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
@@ -38,6 +38,10 @@ for _r in [m for m in ALL_MAPS if m.startswith("R")]:
     for _f, _what in FORMS.items():
         NAMES[_r + _f] = f"{NAMES[_r]} ({_what})"
 ALL_MAPS += [m + f for m in ALL_MAPS if m.startswith("R") for f in FORMS]
+# The World (clock): W1Z in the rotation shows the version for today's clocks (artmode/clockmap.py); the versions
+# themselves can be named too
+NAMES.update(clockmap.NAMES)
+ALL_MAPS += list(clockmap.VARIANTS)
 
 # the helpers, and what the add-on does when one is missing
 H_ON, H_MODE, H_MINUTES = "input_boolean.atlas_frame_on", "input_select.atlas_frame_mode", "input_number.atlas_frame_minutes"
@@ -177,7 +181,7 @@ class Service:
         """The rotation as it can be shown now: the chosen maps whose files are all there (W1 is built
         in; the others are side-loaded), looked at again on every push so a map dropped into my maps
         or the maps folder joins at its turn. W1 if none of them is there."""
-        have = [m for m in c.maps if files.available(m)]
+        have = [m for m in c.maps if (clockmap.available(files.available) if m == clockmap.AUTO else files.available(m))]
         missing = [m for m in c.maps if m not in have]
         self.status.update(maps_available=have or ["W1"],
                            maps_missing=(f"{', '.join(missing)} not installed: add them to the add-on's "
@@ -188,8 +192,8 @@ class Service:
         s = self.store
         rotation = self.installed(c)
         s.d["index"] = (s.d["index"] + 1) % len(rotation)
-        map_id = rotation[s.d["index"]]
         t = datetime.fromtimestamp(now, timezone.utc)
+        map_id = clockmap.resolve(rotation[s.d["index"]], t, self.opt.get("clock_version"), files.available)
         files.reset()
         try:
             data, lay, notes = self.data_for(map_id, c)

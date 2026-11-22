@@ -76,7 +76,13 @@ and the model time. If the server cannot be reached the last data is kept; after
 data the map shows the 1970 to 2000 average instead, and its legend says so. Each data map carries its
 own legend in the bottom-left box. **The World (land cover)** (W1U: forest, cropland, pasture, towns
 and desert, blended where they share the ground) is known to the add-on but not shipped with it: it
-joins the rotation once its files are installed beside the add-on. More maps can be added beside them, without
+joins the rotation once its files are installed beside the add-on. **The World (clock)** (W1Z: how far
+the clock runs ahead of the sun, each time zone shaded west to east, its borders in red) likewise: it comes in three
+versions for the three states of the world's clocks, W1ZW (northern winter), W1ZS (northern summer) and W1ZM (the
+mixed weeks in March and around 1 November, when North America is on summer time and Europe is not). Put `W1Z` in the
+rotation and the add-on shows the version that matches today's clocks; the option `clock_version` (`current`,
+`winter`, `summer`, `mixed`) pins one instead. Any version that is installed can be shown; W1Z is skipped until one
+is. More maps can be added beside them, without
 rebuilding or updating the add-on, from either of two folders:
 
 - **My maps:** the add-on's own folder, `addon_configs/e353e52e_atlas_frame/maps` on the Samba share
@@ -110,6 +116,10 @@ For each file the add-on uses the first good copy: the maps folder, then my maps
 one. A file that is incomplete or not 3840 x 2160 is skipped, with a note, so a half-copied map
 never breaks a push; if the NAS is offline the other maps carry on. `files_from` on the sensor
 shows where the map on the wall came from.
+
+**Which clock map:** the option `clock_version` decides what `W1Z` shows: `current` (default) the version whose
+clocks match today's, so it changes by itself in March, April, October and November; `winter`, `summer` or `mixed`
+always that one (or today's, if that one is not installed).
 
 **Back to the built-in maps:** set the option `maps_source: templates` and restart. Side-loaded files
 are left where they are and ignored until you set it back to `auto`.
@@ -192,7 +202,7 @@ takes a picture: a notification, a wall tablet, an upload.
 | `input_boolean.atlas_frame_weather` | Temperature and wind at each map's cities (first draft look) |
 | `input_boolean.atlas_frame_home_readings` | Your own sensors at home, where home is on the map |
 
-Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), W1G The World (economic output), W1U The World (land cover, not built in), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
+Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), W1G The World (economic output), W1U The World (land cover, not built in), W1Z The World (clock, not built in: today's version of W1ZW, W1ZS, W1ZM), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
 R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asia, R11 United
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
 R16 Central America.
