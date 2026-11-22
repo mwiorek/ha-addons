@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.5
+- The day/night line now sits on the real sunrise and sunset. The fade from night to day runs from the sun 6 deg below the horizon (end of civil twilight) to 4 deg above, in place of -8 to +2, which put the middle of the fade about 3 deg early: 10-20 minutes ahead of the real sunrise in most places, an hour in the far north in winter.
+
 ## 0.5.4
 - **Map packs**: further maps come as one licensed `.atlaspack` file. Copy it into `share/atlas_frame/packs`; the add-on checks its licence and files, installs it into its own storage and lists it, with the licensee, under `map_packs` on `sensor.atlas_frame`. Delete the file to remove the pack.
 - Maps that are not built in now need an installed pack whose licence covers them; maps copied loose into the maps folders without one are no longer shown.
