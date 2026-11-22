@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.5
+- New map id: **The World (clock)**, `W1Z`: how far the clock runs ahead of the sun, each time zone shaded from west to east, its borders in red. Not shipped with the add-on: it shows once its versions are installed, W1ZW (northern winter), W1ZS (northern summer) and W1ZM (the mixed weeks in March and around 1 November). `W1Z` in `input_text.atlas_frame_maps` shows the version that matches today's clocks.
+- New option `clock_version`: `current` (default) follows today's clocks; `winter`, `summer` or `mixed` pins one version.
+
 ## 0.5.4
 - **Map packs**: further maps come as one licensed `.atlaspack` file. Copy it into `share/atlas_frame/packs`; the add-on checks its licence and files, installs it into its own storage and lists it, with the licensee, under `map_packs` on `sensor.atlas_frame`. Delete the file to remove the pack.
 - Maps that are not built in now need an installed pack whose licence covers them; maps copied loose into the maps folders without one are no longer shown.
