@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.6
+- **The World (economic output)**, `W1G`, toned down: land with little or no output is a quiet grey instead of slate blue, by day and by night, so the rich centres lead and the empty land no longer reads as water.
+
 ## 0.5.5
 - New map id: **The World (clock)**, `W1Z`: how far the clock runs ahead of the sun, each time zone shaded from west to east, its borders in red. Not shipped with the add-on: it shows once its versions are installed, W1ZW (northern winter), W1ZS (northern summer) and W1ZM (the mixed weeks in March and around 1 November). `W1Z` in `input_text.atlas_frame_maps` shows the version that matches today's clocks.
 - New option `clock_version`: `current` (default) follows today's clocks; `winter`, `summer` or `mixed` pins one version.
