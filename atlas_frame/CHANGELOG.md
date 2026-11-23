@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.8
+- **The maps card**: a dashboard card that shows the rotation as a matrix, places by versions, each cell a toggle that also shows whether the map is installed. Turn a whole row or column on or off from its heading; *Only installed* hides the rest. The add-on copies the card to `/local/atlas-frame-card.js` when it starts; add it once as a dashboard resource (DOCS, The maps card).
+- The add-on now maps Home Assistant's config folder, to put the card in its `www` folder.
+- Matrix rows in `input_text.atlas_frame_maps`: `W1:BL R7:BPT` (W1 and W1L; R7, R7P and R7T). The whole matrix fits in the helper's 255 characters.
+- `sensor.atlas_frame` lists the matrix under `maps_matrix` (versions, places, each cell's map and where it comes from).
+
 ## 0.5.7
 - **Words in the rotation**: `input_text.atlas_frame_maps` takes words for sets of maps beside the ids: `installed`, `all`, `world`, `regions`, `population`, `temperature`, `live`, `clock`, `pack:<id>`, and `-<id or word>` to leave some out, e.g. `installed,-R11`. Commas or spaces, any case. A pack's maps no longer have to be typed out one by one, and the full list no longer runs into the helper's 255 characters.
 - `sensor.atlas_frame` lists every map id it knows under `maps_catalog`, each with its name and whether it is built in, which pack carries it, or not installed; the words under `map_words`; and anything in the helper it did not understand under `maps_unknown` (it was dropped without a word before).

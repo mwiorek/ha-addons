@@ -1,5 +1,5 @@
 name: Atlas Frame
-version: "0.5.7"
+version: "0.5.8"
 slug: atlas_frame
 description: The atlas maps on The Frame's Art Mode or any screen that shows a picture file, lit by the live sun and moon.
 url: https://github.com/mwiorek/ha-addons/tree/main/atlas_frame
@@ -12,6 +12,7 @@ map:
   - share:rw
   - addon_config:rw
   - media:rw
+  - homeassistant_config:rw
 options:
   tv_host: ""
   preview_only: true
