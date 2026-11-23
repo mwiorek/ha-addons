@@ -223,6 +223,7 @@ in any case; ids and words can be mixed, and the rotation keeps the order they c
 | `clock` | W1Z |
 | `pack:<id>` | The maps of an installed map pack (its id is under `map_packs`) |
 | `-<id or word>` | Leave those out, wherever they are in the list: `regions,-R11` |
+| `<place>:<versions>` | A row of the matrix, as the maps card writes it: `R7:BPT` is R7, R7P and R7T (see The maps card) |
 
 Maps that come from a word and are not installed are skipped without a note; only ids named one by one
 are reported under `maps_missing`. A word or id the add-on does not know is named under `maps_unknown`.
@@ -246,6 +247,25 @@ entities:
   - input_boolean.atlas_frame_weather
   - input_boolean.atlas_frame_home_readings
 ```
+
+### The maps card
+A card for choosing the maps without typing ids: a matrix with a row per place (The World, R1 to R16) and a
+column per version (the map itself, population, temperature, temperature now, economic output, land cover,
+clock). Each cell is a toggle and shows whether that map is installed; a row's or column's heading turns the
+whole row or column on or off, so live temperature can be on for The World alone. *Only installed* hides the
+places that have nothing installed.
+
+1. The add-on puts the card in Home Assistant's `www` folder when it starts (`/local/atlas-frame-card.js`).
+2. Once: **Settings, Dashboards, ⋮, Resources, Add resource**: URL `/local/atlas-frame-card.js`, type
+   *JavaScript module*. Reload the browser.
+3. Add the card to a dashboard (it is listed as *Atlas Frame maps*), or in YAML:
+```yaml
+type: custom:atlas-frame-card
+```
+It writes the rotation to `input_text.atlas_frame_maps` as matrix rows, e.g. `W1:BL R7:BPT` (W1 and W1L; R7,
+R7P and R7T), so the helpers package must be installed. Rows can be typed by hand too: `B` the map, `P`
+population, `T` temperature, `L` temperature now, `G` economic output, `U` land cover, `Z` clock. Maps chosen
+another way that have no cell (W1ZW, say) are kept when the card saves.
 
 ## Data on the map
 - **The weather legend** (`atlas_frame_legend`, on by default): an engraved cartouche in each map's

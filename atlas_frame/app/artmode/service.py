@@ -56,8 +56,33 @@ GROUPS = {
 }
 GROUPS["ALL"] = [m for m in ALL_MAPS if m not in clockmap.VARIANTS]
 GROUP_HELP = {"all": "every map (the clock as W1Z)", "installed": "every map whose files are installed now",
+              "<place>:<versions>": "a row of the matrix, e.g. R7:BPT (B the map, P population, T temperature, "
+                                    "L temperature now, G economic output, U land cover, Z clock)",
               "pack:<id>": "the maps of an installed map pack", "-<id or word>": "leave those out",
               **{k.lower(): ", ".join(v) for k, v in GROUPS.items() if k != "ALL"}}
+
+# the rotation as a matrix, for the dashboard card (ha-addon/atlas_frame/www/atlas-frame-card.js): one row per place,
+# one column per version, written `W1:BL R7:BPT` (W1 and W1L; R7, R7P and R7T); B is the map itself
+PLACES = ["W1"] + _REGIONS
+VERSIONS = {"B": "Map", "P": "Population", "T": "Temperature", "L": "Temperature now", "G": "Economic output",
+            "U": "Land cover", "Z": "Clock"}
+
+
+def cell(place, version):
+    """The map id of one cell, or None where that version of the place does not exist."""
+    m = place if version == "B" else place + version
+    return m if m in ALL_MAPS and m not in clockmap.VARIANTS else None
+
+
+def _row(word):
+    """`R7:BPT` -> [R7, R7P, R7T]; None if the word is not a row of the matrix or names a cell that does not exist."""
+    place, _, versions = word.partition(":")
+    if place not in PLACES or not versions:
+        return None
+    ids = [cell(place, v) for v in versions if v in VERSIONS]
+    if len(ids) != len(versions) or None in ids:
+        return None
+    return ids
 
 
 def expand(text, available, pack_maps=None):
@@ -70,6 +95,8 @@ def expand(text, available, pack_maps=None):
     def one(word):
         if word in ALL_MAPS:
             return [word]
+        if ":" in word and not word.startswith("PACK:"):
+            return _row(word)
         if word in GROUPS:
             return GROUPS[word]
         if word == "INSTALLED":
@@ -93,8 +120,8 @@ def expand(text, available, pack_maps=None):
             drop.update(ids)
         else:
             maps += [m for m in dict.fromkeys(ids) if m not in maps]
-            if word in ALL_MAPS and word not in named:
-                named.append(word)
+            if (word in ALL_MAPS or ":" in word and not word.startswith("PACK:")) and not out:
+                named += [m for m in ids if m not in named]
     return [m for m in maps if m not in drop], [m for m in named if m not in drop], unknown
 
 # the helpers, and what the add-on does when one is missing
@@ -388,6 +415,22 @@ class Service:
                                    if m in i["licence"].get("maps", [])), "?")
         return {m: f"{NAMES[m]} · {where(m)}" for m in ALL_MAPS}
 
+    def matrix(self):
+        """For the dashboard card: the versions (columns), and per place (row) each cell that exists, with where its
+        map comes from: built in, pack <id>, or not installed."""
+        def status(m):
+            if m == clockmap.AUTO:
+                return "installed" if clockmap.available(self.have) else "not installed"
+            if not self.have(m):
+                return "not installed"
+            return "built in" if files.built_in(m) else "pack " + next(
+                (pid for pid, i in sorted(packs.INSTALLED.items()) if m in i["licence"].get("maps", [])), "?")
+        rows = [{"id": p, "name": NAMES[p],
+                 "cells": {v: {"map": m, "status": status(m)} for v in VERSIONS if (m := cell(p, v))}}
+                for p in PLACES]
+        used = [v for v in VERSIONS if any(v in r["cells"] for r in rows)]
+        return {"versions": {v: VERSIONS[v] for v in used}, "places": rows, "helper": H_MAPS}
+
     def report(self, state, c):
         attrs = {"friendly_name": "Atlas Frame", "icon": "mdi:map", "mode": c.mode,
                  "minutes_per_map": c.minutes, "maps": c.maps, "art_mode": self.art,
@@ -397,6 +440,7 @@ class Service:
             attrs["maps_unknown"] = (f"{', '.join(c.unknown)}: not a map id or word; see maps_catalog and "
                                      "map_words")
         attrs["maps_catalog"] = self.catalog()
+        attrs["maps_matrix"] = self.matrix()
         attrs["map_words"] = GROUP_HELP
         pk = packs.summary()
         if pk["installed"] or pk["refused"]:          # who each map pack is licensed to, and any refused
@@ -412,6 +456,32 @@ class Service:
             except Exception as e:
                 log(f"could not update {STATUS}: {e}")
         return state
+
+
+CARD = os.environ.get("ATLAS_CARD", os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                                  "www", "atlas-frame-card.js"))
+HA_WWW = os.environ.get("ATLAS_HA_WWW", "/homeassistant/www")     # Home Assistant's /local
+
+
+def install_card(src=CARD, www=HA_WWW):
+    """Copy the dashboard card into Home Assistant's www folder (served as /local/atlas-frame-card.js), when it is
+    not there or differs. Returns what it did, for the log."""
+    if not os.path.isfile(src):
+        return None
+    if not os.path.isdir(os.path.dirname(www)):
+        return f"dashboard card: {os.path.dirname(www)} not mapped, card not installed"
+    dst = os.path.join(www, os.path.basename(src))
+    new = open(src, "rb").read()
+    try:
+        if os.path.isfile(dst) and open(dst, "rb").read() == new:
+            return "dashboard card: /local/atlas-frame-card.js up to date"
+        os.makedirs(www, exist_ok=True)
+        tmp = dst + ".tmp"
+        open(tmp, "wb").write(new)
+        os.replace(tmp, dst)
+        return "dashboard card: installed /local/atlas-frame-card.js (add it as a dashboard resource once, DOCS)"
+    except OSError as e:
+        return f"dashboard card: could not write {dst}: {e}"
 
 
 def main():
@@ -454,6 +524,9 @@ def main():
         log(f"map packs: {packs.INBOX}, " + (", ".join(f"{p['pack']} (licensed to {p['licensee']})"
                                                       for p in packs.summary()["installed"]) or "none installed"))
     log("maps installed: " + ", ".join(m for m in ALL_MAPS if files.available(m)))
+    note = install_card()
+    if note:
+        log(note)
     hass = Hass()
     try:
         cfg = hass.config()
