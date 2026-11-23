@@ -14,7 +14,7 @@ SHOW = os.environ.get("ATLAS_SHOW", "0") == "1"
 class Frame:
     def __init__(self, host, token_file="/data/tv-token.txt", name="Atlas", timeout=20, show=None):
         self.show = SHOW if show is None else bool(show)
-        from samsungtvws import SamsungTVWS        # installed as the samsungframetv package
+        from samsungframetv import SamsungTVWS     # the samsungframetv package (a fork of samsungtvws)
         self.tv = SamsungTVWS(host, port=8002, token_file=token_file, name=name, timeout=timeout)
 
     def art_mode(self):

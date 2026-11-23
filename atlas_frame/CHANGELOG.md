@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.9
+- Fix: the add-on stopped at start with `No module named 'samsungtvws'`. The `samsungframetv` package installs its module as `samsungframetv`; the connection to the TV now imports it under that name.
+
 ## 0.5.8
 - **The maps card**: a dashboard card that shows the rotation as a matrix, places by versions, each cell a toggle that also shows whether the map is installed. Turn a whole row or column on or off from its heading; *Only installed* hides the rest. The add-on copies the card to `/local/atlas-frame-card.js` when it starts; add it once as a dashboard resource (DOCS, The maps card).
 - The add-on now maps Home Assistant's config folder, to put the card in its `www` folder.
