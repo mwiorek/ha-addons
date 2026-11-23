@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.7
+- **Words in the rotation**: `input_text.atlas_frame_maps` takes words for sets of maps beside the ids: `installed`, `all`, `world`, `regions`, `population`, `temperature`, `live`, `clock`, `pack:<id>`, and `-<id or word>` to leave some out, e.g. `installed,-R11`. Commas or spaces, any case. A pack's maps no longer have to be typed out one by one, and the full list no longer runs into the helper's 255 characters.
+- `sensor.atlas_frame` lists every map id it knows under `maps_catalog`, each with its name and whether it is built in, which pack carries it, or not installed; the words under `map_words`; and anything in the helper it did not understand under `maps_unknown` (it was dropped without a word before).
+- `maps_missing` names only the maps named one by one, not every uninstalled map behind a word.
+
 ## 0.5.6
 - The day/night line now sits on the real sunrise and sunset. The fade from night to day runs from the sun 6 deg below the horizon (end of civil twilight) to 4 deg above, in place of -8 to +2, which put the middle of the fade about 3 deg early: 10-20 minutes ahead of the real sunrise in most places, an hour in the far north in winter.
 - **The World (economic output)**, `W1G`, toned down: land with little or no output is a quiet grey instead of slate blue, by day and by night, so the rich centres lead and the empty land no longer reads as water.
