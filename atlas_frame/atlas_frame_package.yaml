@@ -40,6 +40,8 @@ input_number:
     mode: slider
 
 input_text:
+  # map ids and words, e.g. "installed,-R11" or "world,regions,pack:nordic"; every id is listed under
+  # maps_catalog on sensor.atlas_frame, the words under map_words
   atlas_frame_maps:
     name: Atlas maps in rotation
     icon: mdi:format-list-numbered

@@ -102,8 +102,9 @@ grids/R7.npz              the map's globe grid
 ```
 
 A map joins the rotation at its next turn once all four of its files are there; until then it is
-skipped. `sensor.atlas_frame` lists `maps_available`, and `maps_missing` names the chosen maps that
-are not installed. The same folders also **update** a map: a newer copy of a built-in or
+skipped. `sensor.atlas_frame` lists `maps_available`, `maps_missing` names the maps you named one
+by one that are not installed, and `maps_catalog` lists every map id with its name and whether it is
+built in, which pack carries it, or not installed. The same folders also **update** a map: a newer copy of a built-in or
 side-loaded file is used at the map's next turn.
 
 **Lossless maps:** the map pictures can be `.png` or `.jpg`. Use PNG: every picture the add-on
@@ -133,7 +134,7 @@ Further maps come as **map packs**: one `.atlaspack` file per purchase, licensed
    (over Samba: `\\homeassistant\share\atlas_frame\packs`; the folder appears once the add-on has started).
 2. Within a minute the add-on checks the pack's licence, installs its maps into its own storage and
    lists the pack under `map_packs` on `sensor.atlas_frame`, with the name it is licensed to.
-3. Add the pack's map ids to `input_text.atlas_frame_maps` to put them in the rotation.
+3. Add `pack:<pack id>` (or the pack's map ids, or `installed`) to `input_text.atlas_frame_maps` to put them in the rotation.
 
 Delete the file to remove the pack; replace it to update it. A pack whose licence does not check out,
 or whose files were changed, is not installed and is listed under `map_packs: refused` with the reason.
@@ -196,7 +197,7 @@ takes a picture: a notification, a wall tablet, an upload.
 | `input_boolean.atlas_frame_on` | Pushing on or off |
 | `input_select.atlas_frame_mode` | Follow the sun, Home light, Hold day, Hold dark |
 | `input_number.atlas_frame_minutes` | Minutes per map, 1 to 30 |
-| `input_text.atlas_frame_maps` | Maps in the rotation, in order, e.g. `R1,R7,R15,W1`; maps not installed are skipped |
+| `input_text.atlas_frame_maps` | Maps in the rotation, in order: map ids and words (below), e.g. `R1,R7,R15,W1` or `installed,-R11`; maps not installed are skipped |
 | `input_button.atlas_frame_next` | Next map now |
 | `input_boolean.atlas_frame_legend` | The weather legend in a free corner (on by default) |
 | `input_boolean.atlas_frame_weather` | Temperature and wind at each map's cities (first draft look) |
@@ -205,7 +206,27 @@ takes a picture: a notification, a wall tablet, an upload.
 Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), W1G The World (economic output), W1U The World (land cover, not built in), W1Z The World (clock, not built in: today's version of W1ZW, W1ZS, W1ZM), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
 R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asia, R11 United
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
-R16 Central America.
+R16 Central America. Each region also comes as population (`P`), temperature (`T`) and temperature
+now (`L`), e.g. `R7P` Scandinavia (population), when installed. `maps_catalog` on `sensor.atlas_frame`
+lists them all.
+
+**Words for sets of maps**, so the list need not spell out every id. Separate with commas or spaces,
+in any case; ids and words can be mixed, and the rotation keeps the order they come in, each map once.
+
+| Word | Maps |
+|---|---|
+| `installed` | Every map whose files are installed now; a pack added later joins by itself |
+| `all` | Every map (the clock as W1Z) |
+| `world` | W1, W1P, W1T, W1L, W1G, W1U, W1Z |
+| `regions` | R1 to R16 |
+| `population`, `temperature`, `live` | That form of The World and of every region (W1P, R1P … R16P) |
+| `clock` | W1Z |
+| `pack:<id>` | The maps of an installed map pack (its id is under `map_packs`) |
+| `-<id or word>` | Leave those out, wherever they are in the list: `regions,-R11` |
+
+Maps that come from a word and are not installed are skipped without a note; only ids named one by one
+are reported under `maps_missing`. A word or id the add-on does not know is named under `maps_unknown`.
+`map_words` on the sensor repeats this table.
 
 `sensor.atlas_frame`: the map on the wall, with mode, when it was pushed, when the next is due,
 whether Art Mode is on, and the last error or note. After a push of W1L, `live` says where its

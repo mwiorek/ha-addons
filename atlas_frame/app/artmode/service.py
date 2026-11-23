@@ -12,6 +12,7 @@ deletes pictures it did not upload.
 """
 import json
 import os
+import re
 import time
 import traceback
 from datetime import datetime, timezone
@@ -43,6 +44,59 @@ ALL_MAPS += [m + f for m in ALL_MAPS if m.startswith("R") for f in FORMS]
 NAMES.update(clockmap.NAMES)
 ALL_MAPS += list(clockmap.VARIANTS)
 
+# words for sets of maps in the helper, so the rotation need not spell out every id: `world,regions,-R11`
+_REGIONS = [m for m in DEFAULT_MAPS if m.startswith("R")]
+GROUPS = {
+    "WORLD": [m for m in DEFAULT_MAPS if m.startswith("W")],
+    "REGIONS": _REGIONS,
+    "POPULATION": ["W1P"] + [r + "P" for r in _REGIONS],
+    "TEMPERATURE": ["W1T"] + [r + "T" for r in _REGIONS],
+    "LIVE": ["W1L"] + [r + "L" for r in _REGIONS],
+    "CLOCK": [clockmap.AUTO],
+}
+GROUPS["ALL"] = [m for m in ALL_MAPS if m not in clockmap.VARIANTS]
+GROUP_HELP = {"all": "every map (the clock as W1Z)", "installed": "every map whose files are installed now",
+              "pack:<id>": "the maps of an installed map pack", "-<id or word>": "leave those out",
+              **{k.lower(): ", ".join(v) for k, v in GROUPS.items() if k != "ALL"}}
+
+
+def expand(text, available, pack_maps=None):
+    """The helper's text as a rotation: ids and words (GROUPS, `installed`, `pack:<id>`), separated by commas or
+    spaces, any case; `-X` leaves X out wherever it appears. Returns (maps, named, unknown): the maps in order
+    without repeats, the ids named one by one (only those are reported when not installed), and the words that
+    matched nothing. `available(id)`: whether a map's files are there; `pack_maps`: {pack id: [map ids]}."""
+    packs_up = {k.upper(): v for k, v in (pack_maps or {}).items()}
+
+    def one(word):
+        if word in ALL_MAPS:
+            return [word]
+        if word in GROUPS:
+            return GROUPS[word]
+        if word == "INSTALLED":
+            return [m for m in GROUPS["ALL"]
+                    if (clockmap.available(available) if m == clockmap.AUTO else available(m))]
+        if word.startswith("PACK:") and word[5:] in packs_up:
+            ids = [m for m in packs_up[word[5:]] if m in ALL_MAPS]
+            return [clockmap.AUTO if m in clockmap.VARIANTS else m for m in ids]   # the clock as one entry
+        return None
+
+    maps, named, unknown, drop = [], [], [], set()
+    for raw in re.split(r"[,\s]+", text or ""):
+        word = raw.strip().upper()
+        if not word or word == "-":
+            continue
+        out = word.startswith("-")
+        ids = one(word.lstrip("-"))
+        if ids is None:
+            unknown.append(raw.strip())
+        elif out:
+            drop.update(ids)
+        else:
+            maps += [m for m in dict.fromkeys(ids) if m not in maps]
+            if word in ALL_MAPS and word not in named:
+                named.append(word)
+    return [m for m in maps if m not in drop], [m for m in named if m not in drop], unknown
+
 # the helpers, and what the add-on does when one is missing
 H_ON, H_MODE, H_MINUTES = "input_boolean.atlas_frame_on", "input_select.atlas_frame_mode", "input_number.atlas_frame_minutes"
 H_MAPS, H_NEXT = "input_text.atlas_frame_maps", "input_button.atlas_frame_next"
@@ -62,7 +116,7 @@ def log(msg):
 class Controls:
     """The helpers' current values (defaults where a helper does not exist)."""
 
-    def __init__(self, raw):
+    def __init__(self, raw, available=None, pack_maps=None):
         self.raw = raw
         self.on = raw[H_ON] == "on"
         self.mode = MODES.get(raw[H_MODE], "follow")
@@ -70,8 +124,8 @@ class Controls:
             self.minutes = max(1.0, float(raw[H_MINUTES]))
         except ValueError:
             self.minutes = 2.0
-        wanted = [m.strip().upper() for m in raw[H_MAPS].split(",")]
-        self.maps = [m for m in wanted if m in ALL_MAPS] or list(DEFAULT_MAPS)
+        maps, self.named, self.unknown = expand(raw[H_MAPS], available or files.available, pack_maps)
+        self.maps = maps or list(DEFAULT_MAPS)
         self.next = raw[H_NEXT]
         self.weather, self.home = raw[H_WEATHER] == "on", raw[H_HOME] == "on"
         self.legend = raw[H_LEGEND] == "on"
@@ -118,6 +172,12 @@ class Service:
         self.seen_next = None
         self.seen_key = None
         self.status = {}
+        self._have = {}                     # map id -> files there; looked at again on each push and pack change
+
+    def have(self, map_id):
+        if map_id not in self._have:
+            self._have[map_id] = files.available(map_id)
+        return self._have[map_id]
 
     # ---- reading the world ----
     def controls(self):
@@ -128,7 +188,8 @@ class Service:
             except Exception:
                 st = None
             raw[entity] = str(st["state"]) if st else default
-        return Controls(raw)
+        pack_maps = {pid: i["licence"].get("maps", []) for pid, i in packs.INSTALLED.items()}
+        return Controls(raw, self.have, pack_maps)
 
     def poll_art(self, now):
         if now - self.art_at < ART_POLL:
@@ -145,12 +206,13 @@ class Service:
     # ---- one step ----
     def tick(self):
         now = self.clock()
-        c = self.controls()
         try:                                # licensed map packs dropped in (or taken out) since the last look
             if packs.scan():
-                log("maps installed: " + ", ".join(m for m in ALL_MAPS if files.available(m)))
+                self._have.clear()
+                log("maps installed: " + ", ".join(m for m in ALL_MAPS if self.have(m)))
         except Exception as e:
             log(f"map packs: {e}")
+        c = self.controls()
         if c.legend:                        # the barometer's tendency needs samples, TV on or off
             try:
                 self.home_weather.sample(now)
@@ -181,8 +243,8 @@ class Service:
         """The rotation as it can be shown now: the chosen maps whose files are all there (W1 is built
         in; the others are side-loaded), looked at again on every push so a map dropped into my maps
         or the maps folder joins at its turn. W1 if none of them is there."""
-        have = [m for m in c.maps if (clockmap.available(files.available) if m == clockmap.AUTO else files.available(m))]
-        missing = [m for m in c.maps if m not in have]
+        have = [m for m in c.maps if (clockmap.available(self.have) if m == clockmap.AUTO else self.have(m))]
+        missing = [m for m in c.maps if m not in have and m in c.named]   # a word's maps not there: just skipped
         self.status.update(maps_available=have or ["W1"],
                            maps_missing=(f"{', '.join(missing)} not installed: add them to the add-on's "
                                          "maps folder (DOCS, Maps)") if missing else None)
@@ -190,6 +252,8 @@ class Service:
 
     def push(self, c, now, why, to_tv=True):
         s = self.store
+        self._have.clear()                  # a fresh look at the files on every push
+        c = self.controls() if "INSTALLED" in c.raw[H_MAPS].upper() else c
         rotation = self.installed(c)
         s.d["index"] = (s.d["index"] + 1) % len(rotation)
         t = datetime.fromtimestamp(now, timezone.utc)
@@ -309,11 +373,31 @@ class Service:
                 left.append(cid)
         self.store.d["uploaded"] = left
 
+    def catalog(self):
+        """Every map id the helper takes: {id: "name · where from"}, where from being built in, the pack that
+        carries it, or not installed."""
+        def where(m):
+            if m == clockmap.AUTO:
+                return "today's version of W1ZW, W1ZS, W1ZM" + ("" if clockmap.available(self.have) else
+                                                               " · not installed")
+            if not self.have(m):
+                return "not installed"
+            if files.built_in(m):
+                return "built in"
+            return "pack " + next((pid for pid, i in sorted(packs.INSTALLED.items())
+                                   if m in i["licence"].get("maps", [])), "?")
+        return {m: f"{NAMES[m]} · {where(m)}" for m in ALL_MAPS}
+
     def report(self, state, c):
         attrs = {"friendly_name": "Atlas Frame", "icon": "mdi:map", "mode": c.mode,
                  "minutes_per_map": c.minutes, "maps": c.maps, "art_mode": self.art,
                  "tv": self.frame is not None, "output_files": [o.path for o in self.files_out],
                  **{k: v for k, v in self.status.items() if v is not None}}
+        if c.unknown:
+            attrs["maps_unknown"] = (f"{', '.join(c.unknown)}: not a map id or word; see maps_catalog and "
+                                     "map_words")
+        attrs["maps_catalog"] = self.catalog()
+        attrs["map_words"] = GROUP_HELP
         pk = packs.summary()
         if pk["installed"] or pk["refused"]:          # who each map pack is licensed to, and any refused
             attrs["map_packs"] = pk
