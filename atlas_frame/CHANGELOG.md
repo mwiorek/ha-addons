@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.10
+- Fix: the add-on no longer stops at start when the TV does not answer. It connects to the TV on first use instead of at start, and afresh after any failure; until the TV answers, the log says *TV not answering; waiting* and the output files are still written.
+- Known: on a 2026 Frame (LS03H) the TV's control API (ports 8001/8002) accepted connections but never replied, in Art Mode, in TV mode and after a power cycle, so nothing reached the TV. Check that the TV's software is up to date and allow *Atlas* when the TV asks.
+
 ## 0.5.9
 - Fix: the add-on stopped at start with `No module named 'samsungtvws'`. The `samsungframetv` package installs its module as `samsungframetv`; the connection to the TV now imports it under that name.
 
