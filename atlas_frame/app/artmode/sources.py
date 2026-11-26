@@ -55,26 +55,56 @@ class OpenMeteo:
         return out
 
 
-def home_reading(hass, home, entities):
-    """One reading at home from Home Assistant sensor entities, or None if none is configured or
-    readable. entities: {"temperature": "sensor.x", "pressure": ..., "wind_speed": ..., "wind_from": ...}.
-    Units are taken as the sensors give them; set the sensors to deg C, hPa and m/s."""
-    r = {"name": "Home", "lat": home[0], "lon": home[1], "source": "home assistant"}
-    for key, entity in (entities or {}).items():
-        if not entity:
-            continue
-        st = hass.state(entity)
-        try:
-            r[key] = float(st["state"])
-        except (TypeError, KeyError, ValueError):
-            continue
-    return r if len(r) > 4 else None
-
-
 # ---- the home weather entity (weather.forecast_home, Met.no by default) for the legend ----
 WIND_TO_MS = {"m/s": 1.0, "km/h": 1 / 3.6, "mph": 0.44704, "kn": 0.514444, "ft/s": 0.3048}
 PRESSURE_TO_HPA = {"hPa": 1.0, "mbar": 1.0, "Pa": 0.01, "kPa": 10.0, "inHg": 33.8639, "mmHg": 1.33322,
                    "psi": 68.9476, "cbar": 10.0}
+SENSOR_KEYS = ("temperature", "pressure", "wind_speed", "wind_from")
+COMPASS = {d: i * 22.5 for i, d in enumerate("N NNE NE ENE E ESE SE SSE S SSW SW WSW W WNW NW NNW".split())}
+
+
+def sensor_value(key, st):
+    """A sensor's state in the add-on's units (deg C, hPa, m/s, degrees), from its unit_of_measurement; None when
+    it is missing, unavailable or not a number. A sensor without a unit is taken as already in those units."""
+    if not st:
+        return None
+    raw = str(st.get("state", "")).strip()
+    unit = str((st.get("attributes") or {}).get("unit_of_measurement") or "").strip()
+    if key == "wind_from" and raw.upper() in COMPASS:
+        return COMPASS[raw.upper()]
+    try:
+        v = float(raw)
+    except ValueError:
+        return None
+    if v != v:                                          # NaN
+        return None
+    if key == "temperature":
+        if unit.endswith("F"):
+            return (v - 32) * 5 / 9
+        if unit == "K":
+            return v - 273.15
+        return v
+    if key == "pressure":
+        return v * PRESSURE_TO_HPA.get(unit, 1.0)
+    if key == "wind_speed":
+        return v * WIND_TO_MS.get(unit, 1.0)
+    return v
+
+
+def home_reading(hass, home, entities):
+    """One reading at home from Home Assistant sensor entities, or None if none is configured or
+    readable. entities: {"temperature": "sensor.x", "pressure": ..., "wind_speed": ..., "wind_from": ...}.
+    Each value is converted from the sensor's own unit_of_measurement (sensor_value)."""
+    r = {"name": "Home", "lat": home[0], "lon": home[1], "source": "home assistant"}
+    for key, entity in (entities or {}).items():
+        if not entity or key not in SENSOR_KEYS:
+            continue
+        v = sensor_value(key, hass.state(entity))
+        if v is not None:
+            r[key] = v
+    return r if len(r) > 4 else None
+
+
 TREND_WINDOW = 3 * 3600         # the barometer's tendency is read over three hours
 SAMPLE_EVERY = 300              # seconds between pressure samples
 
@@ -97,9 +127,10 @@ def feels_like(t, humidity=None, wind_ms=None):
 
 
 class HomeWeather:
-    """The legend's reading from a Home Assistant weather entity, in deg C, hPa and m/s, with the
-    pressure's three-hour change from samples the add-on keeps itself (`samples`, a list of
-    [time, hPa] that the caller persists)."""
+    """The legend's reading, in deg C, hPa and m/s: your own home sensors where the add-on has them
+    (`home_sensors`, as home_reading reads them), the Home Assistant weather entity for the rest. The
+    pressure's three-hour change comes from samples the add-on keeps itself (`samples`, a list of
+    [time, hPa, source] that the caller persists), always of the pressure the legend shows."""
 
     def __init__(self, hass, entity="weather.forecast_home", samples=None):
         self.hass, self.entity = hass, entity
@@ -111,25 +142,44 @@ class HomeWeather:
             raise LookupError(f"{self.entity} not found in Home Assistant")
         return st.get("attributes", {})
 
-    def sample(self, now):
-        """Record the pressure now if the last sample is old enough; keep four hours."""
+    def due(self, now):
+        """Whether a pressure sample is due (so the caller reads a sensor only then)."""
+        return not self.samples or now - self.samples[-1][0] >= SAMPLE_EVERY
+
+    def sample(self, now, hpa=None):
+        """Record the pressure now if the last sample is old enough; keep four hours. hpa: the home
+        sensor's pressure, when the add-on has one (the legend then shows it); otherwise the weather
+        entity's. A change of source starts the samples again: a trend from one barometer to another
+        would be the difference between two instruments, not the weather."""
+        src = "sensor" if hpa is not None else "entity"
+        if self.samples and (self.samples[-1][2:3] or ["entity"])[0] != src:
+            del self.samples[:]
         if self.samples and now - self.samples[-1][0] < SAMPLE_EVERY:
             return
-        a = self._attrs()
-        if a.get("pressure") is None:
-            return
-        self.samples.append([now, float(a["pressure"]) * PRESSURE_TO_HPA.get(a.get("pressure_unit", "hPa"), 1.0)])
+        if hpa is None:
+            a = self._attrs()
+            if a.get("pressure") is None:
+                return
+            hpa = float(a["pressure"]) * PRESSURE_TO_HPA.get(a.get("pressure_unit", "hPa"), 1.0)
+        self.samples.append([now, float(hpa), src])
         del self.samples[:-int(4 * 3600 / SAMPLE_EVERY) - 2]
 
     def change_3h(self, now, hpa):
         """hPa change over the last three hours, or None without a sample from then (within 45 min)."""
         if not self.samples:
             return None
-        t0, p0 = min(self.samples, key=lambda s: abs(s[0] - (now - TREND_WINDOW)))
+        t0, p0 = min(self.samples, key=lambda s: abs(s[0] - (now - TREND_WINDOW)))[:2]    # [t, hPa(, source)]
         return hpa - p0 if abs(t0 - (now - TREND_WINDOW)) <= 2700 else None
 
-    def reading(self, now):
-        a = self._attrs()
+    def reading(self, now, home=None):
+        """home: a home_reading (your sensors); its values win over the weather entity's. Without
+        the weather entity the sensors alone make the reading."""
+        try:
+            a = self._attrs()
+        except LookupError:
+            if not home:
+                raise
+            a = {}
         r = {}
         t = a.get("temperature")
         if t is not None:
@@ -148,9 +198,16 @@ class HomeWeather:
                 pass
         if a.get("pressure") is not None:
             r["pressure"] = float(a["pressure"]) * PRESSURE_TO_HPA.get(a.get("pressure_unit", "hPa"), 1.0)
+        mine = [k for k in SENSOR_KEYS if (home or {}).get(k) is not None]
+        for k in mine:                                  # your own sensors win
+            r[k] = float(home[k])
+        r["from_sensors"] = mine
+        if "pressure" in r:
             r["pressure_change_3h"] = self.change_3h(now, r["pressure"])
         if "temperature" in r:
             app = a.get("apparent_temperature")
+            if "temperature" in mine or "wind_speed" in mine:
+                app = None                              # the model's feels-like belongs to the model's air
             if app is not None:
                 app = float(app)
                 if str(a.get("temperature_unit", "°C")).endswith("F"):

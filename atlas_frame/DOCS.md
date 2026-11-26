@@ -35,9 +35,10 @@ not upload. If the TV or a data source does not answer, it waits or leaves that 
    the cities) and `atlas_frame_home_readings` (your own sensor at home) start **off**, and those
    layers only draw once they are on. The weather cartouche (`atlas_frame_legend`) starts on.
 6. **Home sensors (optional):** in the add-on options, `home_sensors` takes your own Home Assistant
-   sensors: `temperature` in **degrees C**, `pressure` in **hPa**, `wind_speed` in **m/s** (not
-   km/h), `wind_from` in **degrees** the wind blows from. Empty fields are fine; a sensor in other
-   units has to be converted first.
+   sensors: `temperature`, `pressure`, `wind_speed`, and `wind_from` (the direction the wind blows from,
+   in degrees or as N, NW, …). Any unit Home Assistant shows works (°C or °F; hPa, inHg, mmHg …; m/s,
+   km/h, mph, knots): each sensor is converted from its own unit. Empty fields are fine. A sensor you set
+   here is what the legend and the home dot show; the weather entity fills only the rest.
 7. **Maps:** **The World** and **The World (population)** are built in; there is nothing to set up.
 8. **Start** the add-on. It begins in **preview** mode: no TV needed, each picture is written to
    `/share/atlas_frame/latest.jpg` (the `share` folder on the Samba share). To watch it without
@@ -285,15 +286,19 @@ another way that have no cell (W1ZW, say) are kept when the card saves.
     rises, the Beaufort name and point it blows from, and the speed in m/s.
   Data: the `weather_entity` option. The default, `weather.forecast_home` (Met.no), is only there on
   systems that set it up: check the name under Developer Tools, States and change the option if it
-  is missing. Units are converted from whatever the entity reports.
+  is missing. Units are converted from whatever the entity reports. **Your home sensors win:** for each
+  of temperature, pressure and wind that has a sensor under `home_sensors`, the legend shows the sensor,
+  not the weather entity (a forecast model's value for your area), and *feels like* is worked out from
+  it; the barometer's trend is then the sensor's own. The legend works from the sensors alone if there
+  is no weather entity.
 - **Weather at cities** (`atlas_frame_weather`): current temperature and wind from Open-Meteo (free,
   no key) for each map's largest labelled cities, refreshed at most every 15 minutes per map. Only
   the cities' public coordinates are sent. Figures keep off the map's lettering; a city with no
   free space nearby is left out (about 78 % of cities get one). Options, `weather_show`: any of
   temperature, pressure, wind.
 - **Home readings** (`atlas_frame_home_readings`): your own sensors, set in the add-on options under
-  `home_sensors` (temperature in deg C, pressure in hPa, wind speed in m/s, wind direction in
-  degrees it blows from). Drawn at home (Home Assistant's location) on maps that show it.
+  `home_sensors`, each converted from its own unit. Drawn at home (Home Assistant's location) on maps
+  that show it, with the same values as the legend.
 - **Adding a data type:** a source in `app/artmode/sources.py` that returns readings, and a layer
   in `app/artmode/layers.py` that draws them, then a switch here.
 

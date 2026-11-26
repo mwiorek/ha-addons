@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.12
+- Fix: the legend's temperature now comes from your own sensor. With `home_sensors` set, the legend showed the weather entity's value (a forecast model for your area) while the home dot showed the sensor, so the two disagreed with each other and with the sensor. Now the sensors win for temperature, pressure and wind, in the legend and at the home dot alike; the weather entity fills only what you have no sensor for, and *feels like* is worked out from your sensor's temperature.
+- Fix: home sensors are read in their own unit. A sensor in °F, inHg, km/h or mph was taken as °C, hPa or m/s (34.5 °F showed as 34.5°); each is now converted from its `unit_of_measurement`. A wind direction given as N, NW, … works too.
+- The barometer's three-hour trend follows the pressure the legend shows (your sensor when you have one) and starts again when that changes, so it never compares two instruments.
+
 ## 0.5.11
 - New built-in map: **The World (GDP per person)**, `W1C`, the per-person companion of W1G. GDP per person at purchasing power parity, by district, 2024 (Kummu et al. 2025, CC BY 4.0), from slate blue through sand to deep red; land where nobody lives stays plain paper, so empty provinces do not borrow their capital's figure. By night under the city lights. Its own legend in the bottom-left box. Ships lossless (PNG).
 - In the rotation: add `W1C`, or the new word `gdp` for W1G and W1C together, or the letter **C** in a matrix row (`W1:BGC`). The maps card has a *GDP/p.* column.
