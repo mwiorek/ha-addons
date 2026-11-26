@@ -5,8 +5,10 @@ Needs only numpy and Pillow, the day and night 4K JPEGs, and the map's grid (art
 
 Modes: follow (each spot lit by its own sun), home (the whole map lit by the sun at home: Home
 Assistant's location in the add-on, Stockholm by default), day and night (held). The moon is drawn where it is overhead, with its lit side towards the sun, and its
-ground track for 12 hours either side; on maps it is not over, it stands in the sky along the top
-as seen from the centre of that map, while it is up there.
+ground track for 12 hours either side; on maps it is not over, it stands on its arc as seen from the centre of
+that map, while it is up there: along the bottom where it crosses the sky to the south (Europe), along the top where
+it crosses to the north (Australia), east on the right as on the map, higher in the sky further in (sky_place).
+It is drawn over any panel; input_boolean.atlas_frame_moon turns it off.
 """
 import argparse
 import io
@@ -168,6 +170,67 @@ def _dot(img, x, y, alpha, color, r=2.2):
     img[yi - 3:yi + 4, xi - 3:xi + 4] = (img[yi - 3:yi + 4, xi - 3:xi + 4] * (1 - a) + color * a).astype(np.uint8)
 
 
+def sky_x(az_deg, lo=0.0, hi=1.0, side="bottom"):
+    """4K x of a sky direction on the moon's arc on a map the moon is not over: east on the right and west on the
+    left, as on the map itself (user 2026-11-26: a moon rising in the east, seen from the window, stands at the map's
+    eastern edge). The middle is the way the moon crosses the sky: south on the bottom arc (Europe), north on the top
+    arc (Australia); the arc spans 135 degrees either side of it, a direction behind that is held at the edge on its
+    side. lo, hi: how far past the edges it may go (the sun, which only aims the moon's bright limb, may be off it)."""
+    mid = 180.0 if side == "bottom" else 0.0
+    d = (mid - az_deg + 180.0) % 360.0 - 180.0         # degrees from the middle, anticlockwise (seen from above)
+    f = 0.5 + (d if side == "bottom" else -d) / 270.0  # east is anticlockwise of south, clockwise of north
+    return W * (0.10 + 0.80 * min(hi, max(lo, f)))
+
+
+EDGE, REACH = 0.08, 0.22         # the horizon's distance from the arc's edge, and how far in 60 degrees up takes it
+
+
+def sky_side(m, centre):
+    """"bottom" when the moon crosses the sky south of the map's centre (it then rises, arcs and sets over the
+    southern horizon: Europe), "top" when it crosses north of it (Australia); in the tropics it changes with the
+    moon's month. From its declination against the centre's latitude, so it holds for the whole night."""
+    dec = math.degrees(math.asin(max(-1.0, min(1.0, float(m[2])))))
+    return "bottom" if dec < centre[0] else "top"
+
+
+def _sky_y(alt, side):
+    """4K y of an altitude (radians) on the arc: the horizon at the map's edge on that side, higher in the sky
+    further in towards the middle."""
+    d = EDGE + REACH * alt / math.radians(60)
+    return H * (1 - d) if side == "bottom" else H * d
+
+
+def sky_place(m, s, centre):
+    """(x, y, bright-limb angle) of the moon (unit vector m) on its arc as seen from `centre` (lat, lon), with the sun
+    s; None while it is below the horizon there. The arc runs along the map's southern edge when the moon crosses the
+    sky to the south (the bottom: Europe), along the northern edge when it crosses to the north (the top: Australia);
+    east on the right either way, the moon further in from the edge the higher it stands."""
+    seen = ephem.place_vec(*centre)
+    alt = ephem.elevation(m, seen)
+    if alt <= 0:
+        return None
+    side = sky_side(m, centre)
+    x = sky_x(math.degrees(ephem.azimuth(m, *centre)), side=side)
+    y = _sky_y(min(alt, math.radians(60)), side)
+    return x, y, limb_as_seen(m, s, seen)
+
+
+def limb_as_seen(m, s, place):
+    """Screen angle (radians, 0 = right, pi/2 = down) of the moon's bright limb as someone at `place` sees it when
+    they look at it: the sun's direction across the sky from the moon, with up the way to the zenith and right their
+    right hand. The arc lays east on the right, a mirror of the southern sky as seen from the ground, so the limb is
+    not aimed at the sun's place on the arc: that drew the crescent the wrong way round (user 2026-11-26)."""
+    dot = lambda a, b: a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    pm = dot(place, m)
+    up = [place[i] - pm * m[i] for i in range(3)]                 # the zenith, across the sky from the moon
+    n = math.sqrt(dot(up, up)) or 1.0
+    up = [c / n for c in up]
+    right = [m[1] * up[2] - m[2] * up[1], m[2] * up[0] - m[0] * up[2], m[0] * up[1] - m[1] * up[0]]   # m x up
+    sm = dot(s, m)
+    d = [s[i] - sm * m[i] for i in range(3)]                       # the sun, across the sky from the moon
+    return math.atan2(-dot(d, up), dot(d, right))
+
+
 def _toward(grid, p, q, step=0.01):
     """Screen direction (radians, y down) from globe point p towards globe point q."""
     a = grid.locate(p)
@@ -248,9 +311,10 @@ def render(map_id, t, mode="follow", quality=95, **kw):
     return encode(render_image(map_id, t, mode, **kw), "jpg", quality)
 
 
-def render_image(map_id, t, mode="follow", home=HOME, layers=(), data=None):
+def render_image(map_id, t, mode="follow", home=HOME, layers=(), data=None, moon=True):
     """The picture (PIL image) of map_id at time t (aware datetime). home = (lat, lon) for the
-    home-light mode; layers draw data on top (artmode/layers.py), each given a Context with `data`."""
+    home-light mode; layers draw data on top (artmode/layers.py), each given a Context with `data`.
+    moon: False leaves the moon and its ground track off (input_boolean.atlas_frame_moon)."""
     LAYER_ERRORS.clear()
     grid = Grid(map_id)
     s = ephem.sun_vec(t)
@@ -277,7 +341,7 @@ def render_image(map_id, t, mode="follow", home=HOME, layers=(), data=None):
 
     m = ephem.moon_vec(t)
     k = ephem.lit_fraction(t)
-    here = grid.locate(m)
+    here = grid.locate(m) if moon else None
     moon_at = None                      # (x, y, bright-limb angle) once placed
 
     def dayness(x, y):
@@ -292,21 +356,10 @@ def render_image(map_id, t, mode="follow", home=HOME, layers=(), data=None):
             if q:
                 _dot(img, q[0], q[1], 0.55, _ink(dayness(*q)))
         moon_at = (here[0], here[1], _toward(grid, m, s))
-    else:
-        # in the sky along the top, as seen from the map's centre: east on the left, west on the right
-        here_ = grid.centre
-        seen = ephem.place_vec(*here_)
-        alt = ephem.elevation(m, seen)
-        if alt > 0:
-            az = math.degrees(ephem.azimuth(m, *here_))
-            x = W * (0.10 + 0.80 * min(1, max(0, (az - 45) / 270)))
-            y = H * (0.20 - 0.12 * min(1, alt / math.radians(60)))
-            # the bright limb faces the sun's direction in the same sky
-            saz = ephem.azimuth(s, *here_)
-            salt = ephem.elevation(s, seen)
-            sx = W * (0.10 + 0.80 * min(1.5, max(-0.5, (math.degrees(saz) - 45) / 270)))
-            sy = H * (0.20 - 0.12 * salt / math.radians(60))
-            moon_at = (x, y, math.atan2(sy - y, sx - x))
+    elif moon:
+        # on its arc as seen from the map's centre: along the edge it crosses the sky on, east on the right, over
+        # any panel there (user 2026-11-26)
+        moon_at = sky_place(m, s, grid.centre)
 
     if moon_at and _moon_base() is None:     # no moon picture: the inked phase symbol
         _disc(img, moon_at[0], moon_at[1], k, moon_at[2], dayness(moon_at[0], moon_at[1]))

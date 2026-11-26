@@ -18,6 +18,10 @@ input_boolean:
     name: Atlas weather legend
     icon: mdi:compass-rose
     initial: true
+  atlas_frame_moon:
+    name: Atlas moon
+    icon: mdi:moon-waning-gibbous
+    initial: true
 
 input_select:
   atlas_frame_mode:
