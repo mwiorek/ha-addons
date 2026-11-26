@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.14
+- The moon on the regional maps now sits where you see it. On a map it is not over, it stands on its arc along the horizon it crosses: the **bottom** edge where it crosses the sky to the south (Europe), the **top** edge where it crosses to the north (Australia). East is on the right, as on the map, and the higher it stands, the further in from the edge. Before, it stood along the top with east on the left (as if facing south), so a moon rising in the north-east was drawn in the map's north-west corner.
+- Fix: the moon's lit side on the regional maps is now the side you see lit in the sky. It was aimed at where the sun fell on the moon's strip, which drew the crescent or gibbous moon the wrong way round (lit on the right for a moon whose left is lit, and the reverse).
+- New switch `input_boolean.atlas_frame_moon` (on by default, also without it; copy `atlas_frame_package.yaml` again to get it): off leaves the moon and its track off every map. The moon is drawn over any panel it lands on.
+
 ## 0.5.13
 - New maps: **The World (snow and ice now)**, `W1S`, and **Europe (snow and ice now)**, `R1S`: the political maps with the day's snow on the land and ice on the sea and lakes laid over them, from NOAA's daily IMS chart of the Northern Hemisphere (4 km, about 450 KB a day, via NSIDC). A new chart is looked for every three hours and laid once; one chart serves both maps. Mountains show through the snow; borders and names stay on top. The key gives the snow area, its share of the northern land, the ice area and the chart's date; with no chart for a week the map shows no snow and says so. Both come as a map pack (W1S is not built in); this release has the code that reads and colours them, so a pack with them needs 0.5.13 or later.
 - In the rotation: `W1S`, `R1S`, the word `snow` for both, or the letter **S** in a matrix row (`W1:BS R1:BS`). The maps card has a *Snow* column.

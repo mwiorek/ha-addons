@@ -33,7 +33,8 @@ not upload. If the TV or a data source does not answer, it waits or leaves that 
    package the add-on runs on defaults: follow the sun, 2 minutes, every installed map.
 5. **Switch on the layers you want.** The helpers `atlas_frame_weather` (temperature and wind at
    the cities) and `atlas_frame_home_readings` (your own sensor at home) start **off**, and those
-   layers only draw once they are on. The weather cartouche (`atlas_frame_legend`) starts on.
+   layers only draw once they are on. The weather cartouche (`atlas_frame_legend`) and the moon
+   (`atlas_frame_moon`) start on.
 6. **Home sensors (optional):** in the add-on options, `home_sensors` takes your own Home Assistant
    sensors: `temperature`, `pressure`, `wind_speed`, and `wind_from` (the direction the wind blows from,
    in degrees or as N, NW, …). Any unit Home Assistant shows works (°C or °F; hPa, inHg, mmHg …; m/s,
@@ -211,6 +212,7 @@ takes a picture: a notification, a wall tablet, an upload.
 | `input_text.atlas_frame_maps` | Maps in the rotation, in order: map ids and words (below), e.g. `R1,R7,R15,W1` or `installed,-R11`; maps not installed are skipped |
 | `input_button.atlas_frame_next` | Next map now |
 | `input_boolean.atlas_frame_legend` | The weather legend in a free corner (on by default) |
+| `input_boolean.atlas_frame_moon` | The moon (on by default): off leaves it and its track off every map |
 | `input_boolean.atlas_frame_weather` | Temperature and wind at each map's cities (first draft look) |
 | `input_boolean.atlas_frame_home_readings` | Your own sensors at home, where home is on the map |
 
@@ -284,6 +286,14 @@ population, `T` temperature, `L` temperature now, `S` snow and ice now, `G` econ
 another way that have no cell (W1ZW, say) are kept when the card saves.
 
 ## Data on the map
+- **The moon** (`atlas_frame_moon`, on by default): at its true phase and size. On a map it is over (The
+  World, mostly) it stands where it is overhead, with its track for 12 hours either side. On a map it is
+  not over, it stands on its arc as seen from the middle of that map, while it is up there: along the
+  **bottom** where it crosses the sky to the south (Europe, North America, most of Asia), along the **top**
+  where it crosses to the north (Australia, Southern Africa, most of South America; near the equator it
+  changes with the moon's month). East is on the right, as on the map, so a moon you see rising in the
+  east stands at the map's eastern edge; the edge is the horizon, and the higher it stands in the sky,
+  the further in it is drawn. It is drawn over any panel there.
 - **The weather legend** (`atlas_frame_legend`, on by default): an engraved cartouche in each map's
   freest corner or edge (clear of the title, flags and scale bar, covering the least lettering),
   headed "Observations at" your Home Assistant location's name (or `legend_place` in the options),

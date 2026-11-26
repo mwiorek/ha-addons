@@ -136,11 +136,12 @@ H_ON, H_MODE, H_MINUTES = "input_boolean.atlas_frame_on", "input_select.atlas_fr
 H_MAPS, H_NEXT = "input_text.atlas_frame_maps", "input_button.atlas_frame_next"
 H_WEATHER, H_HOME = "input_boolean.atlas_frame_weather", "input_boolean.atlas_frame_home_readings"
 H_LEGEND = "input_boolean.atlas_frame_legend"
+H_MOON = "input_boolean.atlas_frame_moon"
 STATUS = "sensor.atlas_frame"
 EVENT = "atlas_frame_rendered"
 DEFAULT_OUTPUT = "/share/atlas_frame/latest.jpg"
 DEFAULTS = {H_ON: "on", H_MODE: "Follow the sun", H_MINUTES: "2", H_MAPS: ",".join(DEFAULT_MAPS),
-            H_NEXT: "", H_WEATHER: "off", H_HOME: "off", H_LEGEND: "on"}
+            H_NEXT: "", H_WEATHER: "off", H_HOME: "off", H_LEGEND: "on", H_MOON: "on"}
 
 
 def log(msg):
@@ -163,10 +164,11 @@ class Controls:
         self.next = raw[H_NEXT]
         self.weather, self.home = raw[H_WEATHER] == "on", raw[H_HOME] == "on"
         self.legend = raw[H_LEGEND] == "on"
+        self.moon = raw[H_MOON] == "on"
 
     def key(self):
         """What changes the picture: a change pushes a new one at once."""
-        return (self.mode, tuple(self.maps), self.weather, self.home, self.legend)
+        return (self.mode, tuple(self.maps), self.weather, self.home, self.legend, self.moon)
 
 
 class Store:
@@ -295,7 +297,7 @@ class Service:
         files.reset()
         try:
             data, lay, notes = self.data_for(map_id, c)
-            pic = self.renderer(map_id, t, c.mode, home=self.home or render.HOME, layers=lay, data=data)
+            pic = self.renderer(map_id, t, c.mode, home=self.home or render.HOME, layers=lay, data=data, moon=c.moon)
             quality = int(self.opt.get("jpeg_quality") or 95)
             encoded = {}
 
