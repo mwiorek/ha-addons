@@ -241,9 +241,9 @@ class Service:
         except Exception as e:
             log(f"map packs: {e}")
         c = self.controls()
-        if c.legend:                        # the barometer's tendency needs samples, TV on or off
-            try:
-                self.home_weather.sample(now)
+        if c.legend and self.home_weather.due(now):   # the barometer's tendency needs samples, TV on or off
+            try:                            # of the pressure the legend shows: your sensor's when you have one
+                self.home_weather.sample(now, (self.home_sensors() or {}).get("pressure"))
             except Exception:
                 pass
         if not c.on:
@@ -340,6 +340,14 @@ class Service:
             log(f"push failed: {e}\n{traceback.format_exc(limit=3)}")
         s.save()
 
+    def home_sensors(self):
+        """Your own sensors at home (option home_sensors), in deg C, hPa and m/s, or None. The home dot and the
+        legend both show these, so the two agree with each other and with the sensors themselves."""
+        try:
+            return sources.home_reading(self.hass, self.home or render.HOME, self.opt.get("home_sensors", {}))
+        except Exception:
+            return None
+
     def data_for(self, map_id, c):
         """Data and layers for this map, from the switched-on sources. A source that fails is left
         out of this picture (noted in the status), never blocking the push."""
@@ -354,7 +362,7 @@ class Service:
                 notes.append(f"weather left out: {e.__class__.__name__}")
         if c.home:
             try:
-                r = sources.home_reading(self.hass, self.home or render.HOME, self.opt.get("home_sensors", {}))
+                r = self.home_sensors()
                 if r:
                     data["home"] = r
                     lay.append(layers.Home())
@@ -369,7 +377,7 @@ class Service:
                     notes.append("no free corner for the legend on this map")
                 else:
                     data["legend_at"] = spot
-                    data["legend"] = {"reading": self.home_weather.reading(self.clock()),
+                    data["legend"] = {"reading": self.home_weather.reading(self.clock(), home=self.home_sensors()),
                                       "place": self.place, "tz": self.tz}
                     lay.append(legend.LegendLayer())
             except Exception as e:
