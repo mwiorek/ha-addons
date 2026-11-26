@@ -25,10 +25,10 @@ ART_POLL = 15               # seconds between asking the TV whether it is in Art
 RETRY = 60                  # seconds before trying again after a failed push
 
 MODES = {"Follow the sun": "follow", "Home light": "home", "Hold day": "day", "Hold dark": "night"}
-ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1G", "W1U", "W1Z", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
+ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1G", "W1C", "W1U", "W1Z", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
             "R13", "R14", "R15", "R16"]
 DEFAULT_MAPS = list(ALL_MAPS)          # the rotation when the helper names none; the forms below join only by name
-NAMES = {"W1": "The World", "W1P": "The World (population)", "W1T": "The World (temperature)", "W1L": "The World (temperature now)", "W1G": "The World (economic output)", "W1U": "The World (land cover)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
+NAMES = {"W1": "The World", "W1P": "The World (population)", "W1T": "The World (temperature)", "W1L": "The World (temperature now)", "W1G": "The World (economic output)", "W1C": "The World (GDP per person)", "W1U": "The World (land cover)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
          "R5": "South America", "R6": "Oceania", "R7": "Scandinavia", "R8": "Northern Africa",
          "R9": "The Middle East", "R10": "East Asia", "R11": "United States", "R12": "Southern Europe",
          "R13": "Southern Africa", "R14": "Indian Subcontinent", "R15": "British Isles",
@@ -52,12 +52,13 @@ GROUPS = {
     "POPULATION": ["W1P"] + [r + "P" for r in _REGIONS],
     "TEMPERATURE": ["W1T"] + [r + "T" for r in _REGIONS],
     "LIVE": ["W1L"] + [r + "L" for r in _REGIONS],
+    "GDP": ["W1G", "W1C"],                       # the two economic Worlds: output per area, GDP per person
     "CLOCK": [clockmap.AUTO],
 }
 GROUPS["ALL"] = [m for m in ALL_MAPS if m not in clockmap.VARIANTS]
 GROUP_HELP = {"all": "every map (the clock as W1Z)", "installed": "every map whose files are installed now",
               "<place>:<versions>": "a row of the matrix, e.g. R7:BPT (B the map, P population, T temperature, "
-                                    "L temperature now, G economic output, U land cover, Z clock)",
+                                    "L temperature now, G economic output, C GDP per person, U land cover, Z clock)",
               "pack:<id>": "the maps of an installed map pack", "-<id or word>": "leave those out",
               **{k.lower(): ", ".join(v) for k, v in GROUPS.items() if k != "ALL"}}
 
@@ -65,7 +66,7 @@ GROUP_HELP = {"all": "every map (the clock as W1Z)", "installed": "every map who
 # one column per version, written `W1:BL R7:BPT` (W1 and W1L; R7, R7P and R7T); B is the map itself
 PLACES = ["W1"] + _REGIONS
 VERSIONS = {"B": "Map", "P": "Population", "T": "Temperature", "L": "Temperature now", "G": "Economic output",
-            "U": "Land cover", "Z": "Clock"}
+            "C": "GDP per person", "U": "Land cover", "Z": "Clock"}
 
 
 def cell(place, version):

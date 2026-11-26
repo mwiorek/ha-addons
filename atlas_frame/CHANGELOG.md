@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.11
+- New built-in map: **The World (GDP per person)**, `W1C`, the per-person companion of W1G. GDP per person at purchasing power parity, by district, 2024 (Kummu et al. 2025, CC BY 4.0), from slate blue through sand to deep red; land where nobody lives stays plain paper, so empty provinces do not borrow their capital's figure. By night under the city lights. Its own legend in the bottom-left box. Ships lossless (PNG).
+- In the rotation: add `W1C`, or the new word `gdp` for W1G and W1C together, or the letter **C** in a matrix row (`W1:BGC`). The maps card has a *GDP/p.* column.
+
 ## 0.5.10
 - Fix: the add-on no longer stops at start when the TV does not answer. It connects to the TV on first use instead of at start, and afresh after any failure; until the TV answers, the log says *TV not answering; waiting* and the output files are still written.
 - Known: on a 2026 Frame (LS03H) the TV's control API (ports 8001/8002) accepted connections but never replied, in Art Mode, in TV mode and after a power cycle, so nothing reached the TV. Check that the TV's software is up to date and allow *Atlas* when the TV asks.

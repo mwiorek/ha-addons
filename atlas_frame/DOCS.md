@@ -66,7 +66,9 @@ where people live in place of the countries' colours, by day the density as a he
 lights of the cities) and **The World (temperature)** (W1T: the mean annual temperature of land and
 sea, 1970 to 2000, with the real city lights by night) and **The World (economic output)** (W1G: what
 the people round each place produce, estimated from where people live and their country's GDP per person,
-red in the rich city centres and blue on land with little or none; by night under dimmed city lights).
+red in the rich city centres and blue on land with little or none; by night under dimmed city lights) and
+**The World (GDP per person)** (W1C: how much each person produces, by district, 2024, at purchasing power
+parity, from Kummu et al. 2025; land where nobody lives stays plain paper; by night under the city lights).
 **The World (temperature now)** (W1L) is the
 same sheet coloured by the current temperature: every two hours the add-on fetches the NOAA GFS model's
 air temperature over land and sea surface temperature (about 2 MB, from the PacIOOS ERDDAP server at
@@ -203,7 +205,7 @@ takes a picture: a notification, a wall tablet, an upload.
 | `input_boolean.atlas_frame_weather` | Temperature and wind at each map's cities (first draft look) |
 | `input_boolean.atlas_frame_home_readings` | Your own sensors at home, where home is on the map |
 
-Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), W1G The World (economic output), W1U The World (land cover, not built in), W1Z The World (clock, not built in: today's version of W1ZW, W1ZS, W1ZM), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
+Map ids: W1 The World, W1P The World (population), W1T The World (temperature), W1L The World (temperature now), W1G The World (economic output), W1C The World (GDP per person), W1U The World (land cover, not built in), W1Z The World (clock, not built in: today's version of W1ZW, W1ZS, W1ZM), R1 Europe, R2 Asia, R3 Africa, R4 North America, R5 South America,
 R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asia, R11 United
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
 R16 Central America. Each region also comes as population (`P`), temperature (`T`) and temperature
@@ -217,7 +219,8 @@ in any case; ids and words can be mixed, and the rotation keeps the order they c
 |---|---|
 | `installed` | Every map whose files are installed now; a pack added later joins by itself |
 | `all` | Every map (the clock as W1Z) |
-| `world` | W1, W1P, W1T, W1L, W1G, W1U, W1Z |
+| `world` | W1, W1P, W1T, W1L, W1G, W1C, W1U, W1Z |
+| `gdp` | W1G and W1C, the two economic Worlds |
 | `regions` | R1 to R16 |
 | `population`, `temperature`, `live` | That form of The World and of every region (W1P, R1P … R16P) |
 | `clock` | W1Z |

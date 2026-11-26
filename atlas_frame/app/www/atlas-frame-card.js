@@ -6,7 +6,7 @@
 //   entity: sensor.atlas_frame          # optional
 //   only_installed: false               # optional: start with places that have nothing installed hidden
 const VERSION = "0.5.8";
-const SHORT = { B: "Map", P: "Pop.", T: "Temp.", L: "Live", G: "Econ.", U: "Land", Z: "Clock" };
+const SHORT = { B: "Map", P: "Pop.", T: "Temp.", L: "Live", G: "Econ.", C: "GDP/p.", U: "Land", Z: "Clock" };
 
 class AtlasFrameCard extends HTMLElement {
   setConfig(config) {
