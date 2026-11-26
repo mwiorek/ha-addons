@@ -1,5 +1,8 @@
-"""The live temperature maps, such as The World (temperature now), W1L: a temperature sheet coloured by the current
-temperature, made on the Home Assistant machine with numpy and Pillow only.
+"""The live maps, made on the Home Assistant machine with numpy and Pillow only: the temperature maps, such as The
+World (temperature now), W1L, a temperature sheet coloured by the current temperature; and the snow maps, The World
+(snow and ice now), W1S, and Europe (snow and ice now), R1S, the political sheet with the day's snow and ice laid
+over it from NOAA's IMS chart (artmode/snow.py; one chart a day, about 450 KB, looked for every three hours, shared
+by every snow map; no chart, or none for a week: no snow, and the key says so). See snow_pictures.
 
 A map is live when its <id>.live.json is found beside its pictures (the maps folder, my maps or the built-in maps,
 artmode/files.py). All live maps colour from one fetch: the data is stored per source, not per map.
@@ -26,6 +29,7 @@ import json
 import math
 import os
 import time
+import urllib.error
 import urllib.request
 
 import numpy as np
@@ -61,9 +65,15 @@ def meta(map_id):
         return json.load(f)
 
 
+def is_snow(m):
+    return m.get("kind") == "snow"
+
+
 def source_key(m):
     """One name per data source and grid, so every live map on it shares a fetch (and its stored copy)."""
     s = m["source"]
+    if is_snow(m):
+        return "ims"
     return "gfs" if "ncep_global" in s["url"] else "src" + str(abs(hash((s["url"], s["land"], s["sea"]))) % 10 ** 8)
 
 
@@ -161,6 +171,153 @@ def field(map_id, now=None):
     z = np.load(_find(f"{map_id}.climate.npz"))
     return (z["land"].astype(np.float32), z["sea"].astype(np.float32),
             {"source": "climate", "valid": None, "note": st["error"] or "no live data yet"})
+
+
+# --- snow (W1S, R1S): one NOAA IMS chart a day ---------------------------------------------
+SNOW_BACK_DAYS = 4                 # the newest chart is looked for this many days back (it lands about 14 UTC)
+SNOW_CHART = {}                    # "cls", "day": the chart held in memory (6144 x 6144 bytes, 38 MB)
+
+
+def _day0(t):
+    return float(int(t // 86400) * 86400)
+
+
+def fetch_snow(now, have=None):
+    """(classes, day start s) of the newest IMS chart newer than `have` (day start s), or None when there is none."""
+    from . import snow
+    for back in range(SNOW_BACK_DAYS + 1):
+        day = _day0(now) - back * 86400
+        if have is not None and day <= have:
+            return None
+        try:
+            raw = _get(snow.url(day))
+        except urllib.error.HTTPError as e:
+            if e.code == 404:                        # not out yet: the day before
+                continue
+            raise
+        return snow.parse(raw), day
+    return None
+
+
+def snow_field(map_id, now=None):
+    """(chart classes or None, info) to lay the snow by: the newest chart, looked for once it is refresh_s since the
+    last look; None when there is none, or the newest is older than stale_s (no snow drawn, the key says so)."""
+    now = time.time() if now is None else now
+    m = meta(map_id)
+    key = SOURCE_OF[map_id] = source_key(m)
+    st = STATE.setdefault(key, {"tried": 0.0, "error": None, "fetched": 0.0, "valid": None})
+    path = _store_path(key)
+    if st["valid"] is None and os.path.exists(path):         # after a restart: the chart fetched before
+        try:
+            with np.load(path) as z:
+                st.update(fetched=float(z["fetched"]), valid=float(z["valid"]))
+        except Exception as e:
+            st["error"] = f"stored data: {e.__class__.__name__}"
+    due = now - st["fetched"] >= m["refresh_s"] and now - st["tried"] >= RETRY_S
+    if due:
+        st["tried"] = now
+        try:
+            got = fetch_snow(now, st["valid"])
+            st.update(fetched=now, error=None)
+            if got is not None:
+                cls, day = got
+                os.makedirs(os.path.dirname(path), exist_ok=True)
+                np.savez_compressed(path, cls=cls, valid=day, fetched=now)
+                SNOW_CHART.update(cls=cls, day=day)
+                st["valid"] = day
+                print(f"live {map_id}: IMS snow chart of {time.strftime('%Y-%m-%d', time.gmtime(day))}", flush=True)
+        except Exception as e:
+            st["error"] = f"{e.__class__.__name__}: {e}"[:200]
+            print(f"live {map_id}: snow chart fetch failed, {st['error']}", flush=True)
+    if st["valid"] is not None and now - st["valid"] <= m["stale_s"]:
+        if SNOW_CHART.get("day") != st["valid"] and os.path.exists(path):
+            with np.load(path) as z:
+                SNOW_CHART.update(cls=z["cls"], day=float(z["valid"]))
+        if SNOW_CHART.get("day") == st["valid"]:
+            return SNOW_CHART["cls"], {"source": "live", "valid": st["valid"], "note": st["error"]}
+    return None, {"source": "none", "valid": st["valid"], "note": st["error"] or "no snow chart yet"}
+
+
+def _snow_cover(cls, grid, size):
+    """(snow, ice), each (H, W, 1) float32 0..1 at picture size `size` (W, H): the chart read at the map's grid,
+    its cell positions put on a half-size raster first (smooth: the projection), then the cover read there and
+    scaled up. South of the equator nothing (the chart is the Northern Hemisphere's)."""
+    from . import snow
+    v = grid.v
+    lat = np.degrees(np.arcsin(np.clip(v[2], -1, 1)))
+    lon = np.degrees(np.arctan2(v[1], v[0]))
+    north = np.clip((lat + 1.0) / 2.0, 0, 1).astype(np.float32)      # fades out over the equator's two degrees
+    c, r = snow.colrow(lon, np.maximum(lat, 0.0))
+    half = (max(1, size[0] // 2), max(1, size[1] // 2))
+    up = lambda a: np.asarray(Image.fromarray(np.ascontiguousarray(a, np.float32), "F").resize(half, Image.BILINEAR))
+    chart = snow.Chart(cls)
+    sn, ic = chart.cover_at(up(c).astype(np.float64), up(r).astype(np.float64))
+    k = up(north)
+    full = lambda a: np.asarray(Image.fromarray(np.ascontiguousarray(a * k, np.float32), "F").resize(size, Image.BILINEAR))[..., None]
+    return full(sn), full(ic), chart
+
+
+def _snow_stamp(info):
+    if info["source"] == "live":
+        return "IMS chart of " + time.strftime("%d %b %Y", time.gmtime(info["valid"])).lstrip("0")
+    if info.get("valid"):
+        return "No chart since " + time.strftime("%d %b", time.gmtime(info["valid"])).lstrip("0") + ": no snow shown"
+    return "No snow chart yet: no snow shown"
+
+
+def _mkm2(v):
+    return f"{v / 1e6:.1f} million km²"
+
+
+def draw_snow_legend(img, g, figures, stamp, fonts_dir):
+    """The day's figures under the snow key's row names (w1_panels.snow_key lays them; figures: {row kind: [lines]})
+    and the chart's date."""
+    pic = Image.fromarray(img)
+    d = ImageDraw.Draw(pic)
+    ink = tuple(g["ink"])
+    fv = ImageFont.truetype(os.path.join(fonts_dir, g["value_font"]), max(8, int(round(g["value_px"]))))
+    fs = ImageFont.truetype(os.path.join(fonts_dir, g["place_font"]), max(8, int(round(g["stamp_px"]))))
+    for row in g["rows"]:
+        for i, text in enumerate(figures.get(row["kind"]) or []):
+            l, t, r, b = d.textbbox((0, 0), text, font=fv)
+            d.text((row["x"] - l, row["y"] + i * row.get("line", g["value_px"] * 1.3) - t), text, font=fv, fill=ink)
+    bx0, by0, bx1, by1 = g["box"]
+    l, t, r, b = d.textbbox((0, 0), stamp, font=fs)
+    d.text((bx1 - g["stamp_pad"][0] - (r - l) - l, by1 - g["stamp_pad"][1] - (b - t) - t), stamp, font=fs, fill=ink)
+    return np.asarray(pic)
+
+
+def snow_pictures(map_id, grid, load, now=None):
+    """(day, night) of a snow map: the political sheet with the chart's snow and ice laid over it (live_build.py's
+    combined calibration: X is the cover, 0..1)."""
+    from .layers import FONTS
+    cls, info = snow_field(map_id, now)
+    key = (info["source"], info["valid"])
+    hit = CACHE.get(map_id)
+    if hit and hit["key"] == key:
+        return hit["pics"]
+    m = meta(map_id)
+    t0 = time.time()
+    stamp = _snow_stamp(info)
+    pics, cover, figures = [], None, {}
+    for theme, stem in (("day", map_id), ("night", map_id + "N")):
+        c11 = load(f"{stem}_4k")
+        size = (c11.shape[1], c11.shape[0])
+        if cls is None:
+            img = np.ascontiguousarray(c11[..., :3])
+        else:
+            if cover is None:
+                sn, ic, chart = _snow_cover(cls, grid, size)
+                cover = (sn, ic)
+                a_snow, a_ice, a_land = chart.areas()
+                figures = {"snow": [_mkm2(a_snow), f"{100 * a_snow / max(a_land, 1):.0f} % of the northern land"],
+                           "ice": [_mkm2(a_ice)]}
+            x1, x2 = m["x"][theme]
+            img = rebuild_combined(c11, load(f"{stem}_k_4k"), load(f"{map_id}_landw_4k"), x1, x2, *cover)
+        pics.append(draw_snow_legend(img, m["legend"][theme], figures, stamp, FONTS))
+    CACHE[map_id] = {"key": key, "pics": tuple(pics), "info": dict(info, stamp=stamp, seconds=round(time.time() - t0, 2))}
+    print(f"live {map_id}: pictures rebuilt ({info['source']}) in {time.time() - t0:.1f}s", flush=True)
+    return CACHE[map_id]["pics"]
 
 
 def _fill(a):
@@ -324,6 +481,8 @@ def pictures(map_id, grid, load, now=None):
     """(day, night) 4K RGB arrays of the live map, rebuilt only when the data changes. grid: render.Grid of the
     map; load(name): a picture as an array (render._load_map)."""
     from .layers import FONTS
+    if is_snow(meta(map_id)):
+        return snow_pictures(map_id, grid, load, now)
     land, sea, info = field(map_id, now)
     key = (info["source"], info["valid"])
     hit = CACHE.get(map_id)

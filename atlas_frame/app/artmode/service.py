@@ -25,10 +25,10 @@ ART_POLL = 15               # seconds between asking the TV whether it is in Art
 RETRY = 60                  # seconds before trying again after a failed push
 
 MODES = {"Follow the sun": "follow", "Home light": "home", "Hold day": "day", "Hold dark": "night"}
-ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1G", "W1C", "W1U", "W1Z", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
+ALL_MAPS = ["W1", "W1P", "W1T", "W1L", "W1S", "W1G", "W1C", "W1U", "W1Z", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10", "R11", "R12",
             "R13", "R14", "R15", "R16"]
 DEFAULT_MAPS = list(ALL_MAPS)          # the rotation when the helper names none; the forms below join only by name
-NAMES = {"W1": "The World", "W1P": "The World (population)", "W1T": "The World (temperature)", "W1L": "The World (temperature now)", "W1G": "The World (economic output)", "W1C": "The World (GDP per person)", "W1U": "The World (land cover)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
+NAMES = {"W1": "The World", "W1P": "The World (population)", "W1T": "The World (temperature)", "W1L": "The World (temperature now)", "W1S": "The World (snow and ice now)", "W1G": "The World (economic output)", "W1C": "The World (GDP per person)", "W1U": "The World (land cover)", "R1": "Europe", "R2": "Asia", "R3": "Africa", "R4": "North America",
          "R5": "South America", "R6": "Oceania", "R7": "Scandinavia", "R8": "Northern Africa",
          "R9": "The Middle East", "R10": "East Asia", "R11": "United States", "R12": "Southern Europe",
          "R13": "Southern Africa", "R14": "Indian Subcontinent", "R15": "British Isles",
@@ -39,6 +39,11 @@ for _r in [m for m in ALL_MAPS if m.startswith("R")]:
     for _f, _what in FORMS.items():
         NAMES[_r + _f] = f"{NAMES[_r]} ({_what})"
 ALL_MAPS += [m + f for m in ALL_MAPS if m.startswith("R") for f in FORMS]
+# snow and ice now, laid over the political map (artmode/live.py, NOAA IMS): Europe only among the regions
+SNOW_REGIONS = ["R1"]
+for _r in SNOW_REGIONS:
+    NAMES[_r + "S"] = f"{NAMES[_r]} (snow and ice now)"
+ALL_MAPS += [r + "S" for r in SNOW_REGIONS]
 # The World (clock): W1Z in the rotation shows the version for today's clocks (artmode/clockmap.py); the versions
 # themselves can be named too
 NAMES.update(clockmap.NAMES)
@@ -52,20 +57,21 @@ GROUPS = {
     "POPULATION": ["W1P"] + [r + "P" for r in _REGIONS],
     "TEMPERATURE": ["W1T"] + [r + "T" for r in _REGIONS],
     "LIVE": ["W1L"] + [r + "L" for r in _REGIONS],
+    "SNOW": ["W1S"] + [r + "S" for r in SNOW_REGIONS],
     "GDP": ["W1G", "W1C"],                       # the two economic Worlds: output per area, GDP per person
     "CLOCK": [clockmap.AUTO],
 }
 GROUPS["ALL"] = [m for m in ALL_MAPS if m not in clockmap.VARIANTS]
 GROUP_HELP = {"all": "every map (the clock as W1Z)", "installed": "every map whose files are installed now",
               "<place>:<versions>": "a row of the matrix, e.g. R7:BPT (B the map, P population, T temperature, "
-                                    "L temperature now, G economic output, C GDP per person, U land cover, Z clock)",
+                                    "L temperature now, S snow and ice now, G economic output, C GDP per person, U land cover, Z clock)",
               "pack:<id>": "the maps of an installed map pack", "-<id or word>": "leave those out",
               **{k.lower(): ", ".join(v) for k, v in GROUPS.items() if k != "ALL"}}
 
 # the rotation as a matrix, for the dashboard card (ha-addon/atlas_frame/www/atlas-frame-card.js): one row per place,
 # one column per version, written `W1:BL R7:BPT` (W1 and W1L; R7, R7P and R7T); B is the map itself
 PLACES = ["W1"] + _REGIONS
-VERSIONS = {"B": "Map", "P": "Population", "T": "Temperature", "L": "Temperature now", "G": "Economic output",
+VERSIONS = {"B": "Map", "P": "Population", "T": "Temperature", "L": "Temperature now", "S": "Snow now", "G": "Economic output",
             "C": "GDP per person", "U": "Land cover", "Z": "Clock"}
 
 
