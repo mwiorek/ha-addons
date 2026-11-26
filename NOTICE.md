@@ -32,6 +32,7 @@ The credits are kept here, not printed on the maps. Anyone who shares a map shou
 | SCAR Antarctic Digital Database, rock outcrop (medium resolution, v7.11), British Antarctic Survey | The world map's corner discs | CC BY 4.0 |
 | `flag-icons` 7.2.3, (c) Panayiotis Lipiridis | Flags in the flag panels | MIT |
 | NASA Black Marble 2016 (VIIRS night lights), via NASA GIBS | Night maps | Free, with credit. Imagery provided by NASA's Global Imagery Browse Services (GIBS), part of NASA's Earth Science Data and Information System (ESDIS) |
+| Kummu, M. et al. 2025, gridded GDP per capita by subnational area (Scientific Data 12:178), updated to 2024, doi:10.5281/zenodo.18429133 | The World (GDP per person), W1C | CC BY 4.0 |
 | WorldClim 2.1 (Fick and Hijmans 2017), worldclim.org | The temperature maps (W1T; W1L when no live data is at hand): mean annual temperature over land, 1970-2000 | CC BY 4.0 |
 | NOAA OI SST v2, NOAA PSL, psl.noaa.gov | The temperature maps: mean sea surface temperature, 1971-2000 | Public domain |
 
