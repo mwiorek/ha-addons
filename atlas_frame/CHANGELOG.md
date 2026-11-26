@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.13
+- New maps: **The World (snow and ice now)**, `W1S`, and **Europe (snow and ice now)**, `R1S`: the political maps with the day's snow on the land and ice on the sea and lakes laid over them, from NOAA's daily IMS chart of the Northern Hemisphere (4 km, about 450 KB a day, via NSIDC). A new chart is looked for every three hours and laid once; one chart serves both maps. Mountains show through the snow; borders and names stay on top. The key gives the snow area, its share of the northern land, the ice area and the chart's date; with no chart for a week the map shows no snow and says so. Both come as a map pack (W1S is not built in); this release has the code that reads and colours them, so a pack with them needs 0.5.13 or later.
+- In the rotation: `W1S`, `R1S`, the word `snow` for both, or the letter **S** in a matrix row (`W1:BS R1:BS`). The maps card has a *Snow* column.
+
 ## 0.5.12
 - Fix: the legend's temperature now comes from your own sensor. With `home_sensors` set, the legend showed the weather entity's value (a forecast model for your area) while the home dot showed the sensor, so the two disagreed with each other and with the sensor. Now the sensors win for temperature, pressure and wind, in the legend and at the home dot alike; the weather entity fills only what you have no sensor for, and *feels like* is worked out from your sensor's temperature.
 - Fix: home sensors are read in their own unit. A sensor in °F, inHg, km/h or mph was taken as °C, hPa or m/s (34.5 °F showed as 34.5°); each is now converted from its `unit_of_measurement`. A wind direction given as N, NW, … works too.

@@ -76,7 +76,15 @@ air temperature over land and sea surface temperature (about 2 MB, from the PacI
 pae-paha.pacioos.hawaii.edu, so Home Assistant needs internet access) and recolours the map once; the
 pushes in between cost no more than any other map. Its legend shows the hour's values at a few places
 and the model time. If the server cannot be reached the last data is kept; after 12 hours without
-data the map shows the 1970 to 2000 average instead, and its legend says so. Each data map carries its
+data the map shows the 1970 to 2000 average instead, and its legend says so.
+**The World (snow and ice now)** (W1S, not built in) and **Europe (snow and ice now)** (R1S, in a map
+pack) are the political maps with the day's snow on the land and ice on the sea and lakes laid over them,
+from NOAA's daily snow and ice chart of the Northern Hemisphere (IMS, 4 km, about 450 KB a day from
+noaadata.apps.nsidc.org). The add-on looks for a new chart every three hours (it comes out once a day,
+early afternoon UTC) and lays the snow once per chart; mountains show through the snow, and borders and
+names stay on top. The key gives the day's snow area, its share of the northern land, the sea and lake
+ice area, and the chart's date. With no chart, or none for a week, the map shows no snow and the key
+says so. Each data map carries its
 own legend in the bottom-left box. **The World (land cover)** (W1U: forest, cropland, pasture, towns
 and desert, blended where they share the ground) is known to the add-on but not shipped with it: it
 joins the rotation once its files are installed beside the add-on. **The World (clock)** (W1Z: how far
@@ -210,7 +218,8 @@ Map ids: W1 The World, W1P The World (population), W1T The World (temperature), 
 R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asia, R11 United
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
 R16 Central America. Each region also comes as population (`P`), temperature (`T`) and temperature
-now (`L`), e.g. `R7P` Scandinavia (population), when installed. `maps_catalog` on `sensor.atlas_frame`
+now (`L`), e.g. `R7P` Scandinavia (population), when installed. W1S The World (snow and ice now, not
+built in) and R1S Europe (snow and ice now) show the day's snow and ice. `maps_catalog` on `sensor.atlas_frame`
 lists them all.
 
 **Words for sets of maps**, so the list need not spell out every id. Separate with commas or spaces,
@@ -220,10 +229,11 @@ in any case; ids and words can be mixed, and the rotation keeps the order they c
 |---|---|
 | `installed` | Every map whose files are installed now; a pack added later joins by itself |
 | `all` | Every map (the clock as W1Z) |
-| `world` | W1, W1P, W1T, W1L, W1G, W1C, W1U, W1Z |
+| `world` | W1, W1P, W1T, W1L, W1S, W1G, W1C, W1U, W1Z |
 | `gdp` | W1G and W1C, the two economic Worlds |
 | `regions` | R1 to R16 |
 | `population`, `temperature`, `live` | That form of The World and of every region (W1P, R1P … R16P) |
+| `snow` | W1S and R1S, snow and ice now |
 | `clock` | W1Z |
 | `pack:<id>` | The maps of an installed map pack (its id is under `map_packs`) |
 | `-<id or word>` | Leave those out, wherever they are in the list: `regions,-R11` |
@@ -236,7 +246,8 @@ are reported under `maps_missing`. A word or id the add-on does not know is name
 `sensor.atlas_frame`: the map on the wall, with mode, when it was pushed, when the next is due,
 whether Art Mode is on, and the last error or note. After a push of W1L, `live` says where its
 colours came from (`live` or `climate`), the model time on its legend, when it last fetched, and the
-last fetch error.
+last fetch error; after W1S or R1S, `live` is `live` (the chart's date on the key) or `none` (no snow
+shown).
 
 A dashboard card:
 ```yaml
@@ -254,8 +265,8 @@ entities:
 
 ### The maps card
 A card for choosing the maps without typing ids: a matrix with a row per place (The World, R1 to R16) and a
-column per version (the map itself, population, temperature, temperature now, economic output, land cover,
-clock). Each cell is a toggle and shows whether that map is installed; a row's or column's heading turns the
+column per version (the map itself, population, temperature, temperature now, snow now, economic output,
+land cover, clock). Each cell is a toggle and shows whether that map is installed; a row's or column's heading turns the
 whole row or column on or off, so live temperature can be on for The World alone. *Only installed* hides the
 places that have nothing installed.
 
@@ -268,7 +279,8 @@ type: custom:atlas-frame-card
 ```
 It writes the rotation to `input_text.atlas_frame_maps` as matrix rows, e.g. `W1:BL R7:BPT` (W1 and W1L; R7,
 R7P and R7T), so the helpers package must be installed. Rows can be typed by hand too: `B` the map, `P`
-population, `T` temperature, `L` temperature now, `G` economic output, `U` land cover, `Z` clock. Maps chosen
+population, `T` temperature, `L` temperature now, `S` snow and ice now, `G` economic output, `U` land cover,
+`Z` clock. Maps chosen
 another way that have no cell (W1ZW, say) are kept when the card saves.
 
 ## Data on the map
