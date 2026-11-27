@@ -2,7 +2,8 @@
 World (temperature now), W1L, a temperature sheet coloured by the current temperature; and the snow maps, The World
 (snow and ice now), W1S, and Europe (snow and ice now), R1S, the political sheet with the day's snow and ice laid
 over it from NOAA's IMS chart (artmode/snow.py; one chart a day, about 450 KB, looked for every three hours, shared
-by every snow map; no chart, or none for a week: no snow, and the key says so). See snow_pictures.
+by every snow map; no chart, or none for a week: no snow). The snow maps carry no key: the chart's date and the day's
+areas are on the sensor (status). See snow_pictures.
 
 A map is live when its <id>.live.json is found beside its pictures (the maps folder, my maps or the built-in maps,
 artmode/files.py). All live maps colour from one fetch: the data is stored per source, not per map.
@@ -270,7 +271,7 @@ def _mkm2(v):
 
 
 def draw_snow_legend(img, g, figures, stamp, fonts_dir):
-    """The day's figures under the snow key's row names (w1_panels.snow_key lays them; figures: {row kind: [lines]})
+    """The day's figures under the snow key's row names (as the snow key of sheets built before 0.5.15 laid them; figures: {row kind: [lines]})
     and the chart's date."""
     pic = Image.fromarray(img)
     d = ImageDraw.Draw(pic)
@@ -299,7 +300,7 @@ def snow_pictures(map_id, grid, load, now=None):
     m = meta(map_id)
     t0 = time.time()
     stamp = _snow_stamp(info)
-    pics, cover, figures = [], None, {}
+    pics, cover, figures, areas = [], None, {}, {}
     for theme, stem in (("day", map_id), ("night", map_id + "N")):
         c11 = load(f"{stem}_4k")
         size = (c11.shape[1], c11.shape[0])
@@ -310,12 +311,16 @@ def snow_pictures(map_id, grid, load, now=None):
                 sn, ic, chart = _snow_cover(cls, grid, size)
                 cover = (sn, ic)
                 a_snow, a_ice, a_land = chart.areas()
+                areas = {"snow_km2": round(a_snow), "ice_km2": round(a_ice),
+                         "snow_share": round(a_snow / max(a_land, 1), 3)}
                 figures = {"snow": [_mkm2(a_snow), f"{100 * a_snow / max(a_land, 1):.0f} % of the northern land"],
                            "ice": [_mkm2(a_ice)]}
             x1, x2 = m["x"][theme]
             img = rebuild_combined(c11, load(f"{stem}_k_4k"), load(f"{map_id}_landw_4k"), x1, x2, *cover)
-        pics.append(draw_snow_legend(img, m["legend"][theme], figures, stamp, FONTS))
-    CACHE[map_id] = {"key": key, "pics": tuple(pics), "info": dict(info, stamp=stamp, seconds=round(time.time() - t0, 2))}
+        g = (m.get("legend") or {}).get(theme)       # a key only in sheets built before 0.5.15 (user 2026-11-26: none)
+        pics.append(draw_snow_legend(img, g, figures, stamp, FONTS) if g else img)
+    CACHE[map_id] = {"key": key, "pics": tuple(pics),
+                     "info": dict(info, stamp=stamp, seconds=round(time.time() - t0, 2), **areas)}
     print(f"live {map_id}: pictures rebuilt ({info['source']}) in {time.time() - t0:.1f}s", flush=True)
     return CACHE[map_id]["pics"]
 
@@ -518,5 +523,8 @@ def pictures(map_id, grid, load, now=None):
 def status(map_id):
     """For the sensor: where the colours came from, and when."""
     c, st = CACHE.get(map_id, {}), STATE.get(SOURCE_OF.get(map_id, ""), {})
-    return {"source": (c.get("info") or {}).get("source"), "stamp": (c.get("info") or {}).get("stamp"),
-            "fetched": st.get("fetched") or None, "error": st.get("error")}
+    info = c.get("info") or {}
+    out = {"source": info.get("source"), "stamp": info.get("stamp"),
+           "fetched": st.get("fetched") or None, "error": st.get("error")}
+    out.update({k: info[k] for k in ("snow_km2", "ice_km2", "snow_share") if k in info})   # a snow map: the day's areas
+    return out

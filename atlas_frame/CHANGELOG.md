@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.15
+- The snow maps (W1S, R1S) keep the political maps' own panels: the World's most populous nations, Europe's flags by day and largest cities by night. The snow key is gone; the chart's date and the day's snow and ice areas are on `sensor.atlas_frame` (`live`: `stamp`, `snow_km2`, `ice_km2`, `snow_share`). Needs a snow pack built from the new sheets; an older pack still shows its key.
+- The snow maps' data is credited in the add-on's NOTICE and in every map pack's NOTICE.txt: U.S. National Ice Center (2008), IMS Daily Northern Hemisphere Snow and Ice Analysis (NSIDC G02156, Version 1), doi:10.7265/N52R3PMC.
+
 ## 0.5.14
 - The moon on the regional maps now sits where you see it. On a map it is not over, it stands on its arc along the horizon it crosses: the **bottom** edge where it crosses the sky to the south (Europe), the **top** edge where it crosses to the north (Australia). East is on the right, as on the map, and the higher it stands, the further in from the edge. Before, it stood along the top with east on the left (as if facing south), so a moon rising in the north-east was drawn in the map's north-west corner.
 - Fix: the moon's lit side on the regional maps is now the side you see lit in the sky. It was aimed at where the sun fell on the moon's strip, which drew the crescent or gibbous moon the wrong way round (lit on the right for a moon whose left is lit, and the reverse).
