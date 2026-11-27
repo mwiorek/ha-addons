@@ -24,7 +24,7 @@ A_WGS = 6378137.0
 E_WGS = math.sqrt(1 - (6356752.314245 / A_WGS) ** 2)
 LAT_TS, LON_0 = 60.0, -80.0
 URL = "https://noaadata.apps.nsidc.org/NOAA/G02156/4km/{y}/ims{y}{doy:03d}_00UTC_4km_v1.3.asc.gz"
-CREDIT = "NOAA IMS via NSIDC"
+CREDIT = "U.S. National Ice Center, IMS (NSIDC G02156), doi:10.7265/N52R3PMC"
 COARSE = 8                          # the fallback grid: 8 x 8 cells
 AREA_KM2 = (CELL / 1000) ** 2
 
