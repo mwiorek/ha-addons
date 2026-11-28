@@ -39,8 +39,9 @@ for _r in [m for m in ALL_MAPS if m.startswith("R")]:
     for _f, _what in FORMS.items():
         NAMES[_r + _f] = f"{NAMES[_r]} ({_what})"
 ALL_MAPS += [m + f for m in ALL_MAPS if m.startswith("R") for f in FORMS]
-# snow and ice now, laid over the political map (artmode/live.py, NOAA IMS): Europe only among the regions
-SNOW_REGIONS = ["R1"]
+# snow and ice now, laid over the political map (artmode/live.py, NOAA IMS): every region (R1S ... R16S), each shown
+# once its files are installed; south of the equator nothing (the chart is the Northern Hemisphere's)
+SNOW_REGIONS = [m for m in DEFAULT_MAPS if m.startswith("R")]
 for _r in SNOW_REGIONS:
     NAMES[_r + "S"] = f"{NAMES[_r]} (snow and ice now)"
 ALL_MAPS += [r + "S" for r in SNOW_REGIONS]

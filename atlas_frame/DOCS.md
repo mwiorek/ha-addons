@@ -78,13 +78,14 @@ pae-paha.pacioos.hawaii.edu, so Home Assistant needs internet access) and recolo
 pushes in between cost no more than any other map. Its legend shows the hour's values at a few places
 and the model time. If the server cannot be reached the last data is kept; after 12 hours without
 data the map shows the 1970 to 2000 average instead, and its legend says so.
-**The World (snow and ice now)** (W1S, not built in) and **Europe (snow and ice now)** (R1S, in a map
-pack) are the political maps with the day's snow on the land and ice on the sea and lakes laid over them,
+**The World (snow and ice now)** (W1S, not built in) and the regions' snow maps, **R1S to R16S** (e.g. R1S
+Europe (snow and ice now), R7S Scandinavia (snow and ice now); none built in, each shown once its files are installed) are the political maps with the day's snow on the land and ice on the sea and lakes laid over them,
 from NOAA's daily snow and ice chart of the Northern Hemisphere (IMS, 4 km, about 450 KB a day from
 noaadata.apps.nsidc.org; U.S. National Ice Center, NSIDC G02156, doi:10.7265/N52R3PMC, free with credit). The add-on looks for a new chart every three hours (it comes out once a day,
 early afternoon UTC) and lays the snow once per chart; mountains show through the snow, and borders and
-names stay on top. They keep the political maps' own panels (the World's most populous nations, Europe's
-flags by day and largest cities by night); the chart's date and the day's snow and ice areas are on
+names stay on top. South of the equator they show no snow (the chart covers the Northern Hemisphere only). They keep
+the political maps' own panels and insets (the World's most populous nations, Europe's flags by day and largest cities by
+night) and carry no snow key; the chart's date and the day's snow and ice areas are on
 `sensor.atlas_frame`. With no chart, or none for a week, the map shows no snow. Each data map carries its
 own legend in the bottom-left box. **The World (land cover)** (W1U: forest, cropland, pasture, towns
 and desert, blended where they share the ground) is known to the add-on but not shipped with it: it
@@ -221,7 +222,8 @@ R6 Oceania, R7 Scandinavia, R8 Northern Africa, R9 The Middle East, R10 East Asi
 States, R12 Southern Europe, R13 Southern Africa, R14 Indian Subcontinent, R15 British Isles,
 R16 Central America. Each region also comes as population (`P`), temperature (`T`) and temperature
 now (`L`), e.g. `R7P` Scandinavia (population), when installed. W1S The World (snow and ice now, not
-built in) and R1S Europe (snow and ice now) show the day's snow and ice. `maps_catalog` on `sensor.atlas_frame`
+built in) and each region's snow form (`S`, R1S to R16S, e.g. `R7S` Scandinavia (snow and ice now)) show the day's
+snow and ice, when installed. `maps_catalog` on `sensor.atlas_frame`
 lists them all.
 
 **Words for sets of maps**, so the list need not spell out every id. Separate with commas or spaces,
@@ -235,7 +237,7 @@ in any case; ids and words can be mixed, and the rotation keeps the order they c
 | `gdp` | W1G and W1C, the two economic Worlds |
 | `regions` | R1 to R16 |
 | `population`, `temperature`, `live` | That form of The World and of every region (W1P, R1P … R16P) |
-| `snow` | W1S and R1S, snow and ice now |
+| `snow` | W1S and R1S to R16S, snow and ice now |
 | `clock` | W1Z |
 | `pack:<id>` | The maps of an installed map pack (its id is under `map_packs`) |
 | `-<id or word>` | Leave those out, wherever they are in the list: `regions,-R11` |
@@ -248,7 +250,7 @@ are reported under `maps_missing`. A word or id the add-on does not know is name
 `sensor.atlas_frame`: the map on the wall, with mode, when it was pushed, when the next is due,
 whether Art Mode is on, and the last error or note. After a push of W1L, `live` says where its
 colours came from (`live` or `climate`), the model time on its legend, when it last fetched, and the
-last fetch error; after W1S or R1S, `live` is `live` or `none` (no snow shown), with the chart's date
+last fetch error; after W1S or a region's snow map (R1S to R16S), `live` is `live` or `none` (no snow shown), with the chart's date
 (`stamp`), the snow and ice areas (`snow_km2`, `ice_km2`) and the snow's share of the northern land
 (`snow_share`).
 

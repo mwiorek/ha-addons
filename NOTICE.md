@@ -39,7 +39,7 @@ The credits are kept here, not printed on the maps. Anyone who shares a map shou
 At run time the add-on reads current weather from Open-Meteo (open-meteo.com, CC BY 4.0) when the
 city weather layer is on. For The World (temperature now), W1L, it reads the current air and
 sea surface temperature of the NOAA GFS model (NCEP, public domain) every two hours from the PacIOOS
-ERDDAP server (pae-paha.pacioos.hawaii.edu, dataset `ncep_global`). For the snow maps (W1S, R1S, from a map pack) it reads
+ERDDAP server (pae-paha.pacioos.hawaii.edu, dataset `ncep_global`). For the snow maps (W1S, R1S to R16S, from a map pack) it reads
 the day's snow and ice chart: U.S. National Ice Center (2008), IMS Daily Northern Hemisphere Snow and Ice
 Analysis at 1 km, 4 km, and 24 km Resolutions (G02156, Version 1), National Snow and Ice Data Center,
 doi:10.7265/N52R3PMC (noaadata.apps.nsidc.org); free to use, with this credit.

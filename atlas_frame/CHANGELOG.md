@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.16
+- Every regional map can now have a snow map: **R1S to R16S** (e.g. `R7S`, Scandinavia (snow and ice now)), the region's political map with the day's NOAA IMS snow and ice laid over it, as R1S does. None is built in: each joins the rotation once its files are installed and is skipped until then, like any other map. They keep their map's own panels and insets and carry no snow key; the chart's date and the day's snow and ice areas stay on `sensor.atlas_frame` (`live`). One chart still serves every snow map. South of the equator there is no snow to show (the chart covers the Northern Hemisphere only).
+- In the rotation: the ids `R1S` … `R16S`, the word `snow` (now W1S and every region's snow map), or the letter **S** in any region's matrix row (`R7:BS`). The maps card's *Snow* column has a cell for every region, and `maps_catalog` lists them all.
+
 ## 0.5.15
 - The snow maps (W1S, R1S) keep the political maps' own panels: the World's most populous nations, Europe's flags by day and largest cities by night. The snow key is gone; the chart's date and the day's snow and ice areas are on `sensor.atlas_frame` (`live`: `stamp`, `snow_km2`, `ice_km2`, `snow_share`). Needs a snow pack built from the new sheets; an older pack still shows its key.
 - The snow maps' data is credited in the add-on's NOTICE and in every map pack's NOTICE.txt: U.S. National Ice Center (2008), IMS Daily Northern Hemisphere Snow and Ice Analysis (NSIDC G02156, Version 1), doi:10.7265/N52R3PMC.

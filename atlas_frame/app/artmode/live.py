@@ -174,7 +174,7 @@ def field(map_id, now=None):
             {"source": "climate", "valid": None, "note": st["error"] or "no live data yet"})
 
 
-# --- snow (W1S, R1S): one NOAA IMS chart a day ---------------------------------------------
+# --- snow (W1S, R1S ... R16S): one NOAA IMS chart a day, shared by every snow map ---------------------------------------------
 SNOW_BACK_DAYS = 4                 # the newest chart is looked for this many days back (it lands about 14 UTC)
 SNOW_CHART = {}                    # "cls", "day": the chart held in memory (6144 x 6144 bytes, 38 MB)
 
